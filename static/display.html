@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Табло черги - Ковзанка</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6 font-sans" x-data="displayApp()">
+<div class="max-w-7xl mx-auto">
+    <!-- Шапка -->
+    <header class="flex justify-between items-center pb-6 border-b border-gray-800 mb-8">
+        <h1 class="text-4xl font-black uppercase tracking-wider text-blue-400">Електронна Черга</h1>
+        <div class="flex items-center space-x-3">
+            <span class="w-3 h-3 rounded-full"
+                  :class="wsConnected ? 'bg-green-500 animate-pulse' : 'bg-amber-500'"></span>
+            <span class="text-sm font-mono text-gray-400" x-text="wsConnected ? 'LIVE (WS)' : 'RECONNECTING...'"></span>
+        </div>
+    </header>
+
+    <!-- Секції черги -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+        <!-- СЕКЦІЯ 1: Запрошуються на касу -->
+        <div class="bg-gray-800/80 rounded-2xl p-6 border border-green-500/30 shadow-2xl">
+            <h2 class="text-2xl font-bold text-green-400 mb-6 flex items-center uppercase tracking-wide">
+                <span class="inline-block w-4 h-4 bg-green-500 rounded-full mr-3 animate-ping"></span>
+                Запрошуються
+            </h2>
+
+            <div class="grid grid-cols-2 gap-4">
+                <template x-for="item in callingItems" :key="item.id">
+                    <div class="bg-green-950/80 border-2 border-green-500 rounded-xl p-4 text-center transform scale-102 transition">
+                        <span class="block text-sm text-green-300 font-medium">Талон</span>
+                        <span class="text-5xl font-black text-green-400 font-mono"
+                              x-text="'#' + item.ticket_number"></span>
+                    </div>
+                </template>
+            </div>
+
+            <template x-if="callingItems.length === 0">
+                <div class="text-center py-12 text-gray-500 font-medium text-lg">
+                    Немає активних викликів
+                </div>
+            </template>
+        </div>
+
+        <!-- СЕКЦІЯ 2: Очікують у черзі -->
+        <div class="bg-gray-800/80 rounded-2xl p-6 border border-gray-700 shadow-2xl">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-6 uppercase tracking-wide">
+                Готуються (Очікують)
+            </h2>
+
+            <div class="grid grid-cols-3 gap-3">
+                <template x-for="item in waitingItems" :key="item.id">
+                    <div class="bg-gray-900 border border-gray-700 rounded-lg p-3 text-center">
+                        <span class="text-2xl font-bold text-yellow-300 font-mono"
+                              x-text="'#' + item.ticket_number"></span>
+                    </div>
+                </template>
+            </div>
+
+            <template x-if="waitingItems.length === 0">
+                <div class="text-center py-12 text-gray-500 font-medium text-lg">
+                    Черга порожня
+                </div>
+            </template>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function displayApp() {
+        return {
+            callingItems: [],
+            waitingItems: [],
+            wsConnected: false,
+            socket: null,
+
+            async fetchQueue() {
+                try {
+                    const response = await fetch('/api/queue');
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        // 1. Статус "ВИКЛИКАЄТЬСЯ" -> у зелений блок
+                        this.callingItems = data.filter(item => item.status === 'ВИКЛИКАЄТЬСЯ');
+
+                        // 2. Статус "ЧЕКАЄ" -> у жовтий блок (перші 12 за порядком)
+                        this.waitingItems = data.filter(item => item.status === 'ЧЕКАЄ').slice(0, 12);
+                    }
+                } catch (e) {
+                    console.error("Помилка завантаження черги:", e);
+                }
+            },
+
+            connectWebSocket() {
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${wsProtocol}//${window.location.host}/api/ws/queue`;
+
+                this.socket = new WebSocket(wsUrl);
+
+                this.socket.onopen = () => {
+                    console.log("WebSocket з'єднання встановлено");
+                    this.wsConnected = true;
+                    // Запитуємо свіжі дані одразу при підключенні
+                    this.fetchQueue();
+                };
+
+                this.socket.onmessage = (event) => {
+                    console.log("Отримано подійний сигнал:", event.data);
+                    this.fetchQueue();
+                };
+
+                this.socket.onerror = (error) => {
+                    console.error("WebSocket помилка:", error);
+                };
+
+                this.socket.onclose = () => {
+                    console.warn("WebSocket відключено. Повторна спроба підключення через 2 сек...");
+                    this.wsConnected = false;
+                    setTimeout(() => {
+                        this.connectWebSocket();
+                    }, 2000);
+                };
+            },
+
+            init() {
+                // Первинне завантаження
+                this.fetchQueue();
+
+                // Запуск WebSockets з автовідновленням
+                this.connectWebSocket();
+
+                // Резервне періодичне опитування (polling) на випадок мережевих збоїв
+                setInterval(() => {
+                    this.fetchQueue();
+                }, 3000);
+            }
+        }
+    }
+</script>
+</body>
+</html>

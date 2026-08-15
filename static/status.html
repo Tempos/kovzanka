@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статус у черзі</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4" x-data="statusApp()" x-init="init()">
+
+    <div class="w-full max-w-md bg-slate-800 rounded-3xl p-6 shadow-2xl text-center border border-slate-700">
+
+        <!-- Пошукове поле, якщо номер талона відсутній в URL -->
+        <template x-if="!ticketNumber">
+            <div class="space-y-4">
+                <h2 class="text-xl font-bold">Введіть номер талона</h2>
+                <div class="flex gap-2">
+                    <input type="number" x-model="inputTicket" placeholder="Наприклад: 106"
+                           @keyup.enter="searchTicket()"
+                           class="flex-1 bg-slate-900 border border-slate-700 px-4 py-2 rounded-xl text-white outline-none focus:border-blue-500">
+                    <button @click="searchTicket()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl font-bold">Знайти</button>
+                </div>
+            </div>
+        </template>
+
+        <!-- Перегляд статусу -->
+        <template x-if="ticketNumber">
+            <div>
+                <p class="text-slate-400 text-sm font-semibold uppercase tracking-wider">Ваш номер у черзі</p>
+                <h1 class="text-7xl font-black text-blue-400 my-3" x-text="data.ticket_number ? '#' + data.ticket_number : '#' + ticketNumber">#---</h1>
+
+                <!-- Плашка статусу -->
+                <div class="my-6 p-4 rounded-2xl font-black text-2xl tracking-wide uppercase transition-all"
+                     :class="{
+                        'bg-amber-500/20 text-amber-400 border border-amber-500/30': data.status === 'ЧЕКАЄ' || data.status === 'WAITING',
+                        'bg-emerald-500 text-slate-950 animate-bounce': data.status === 'ВИКЛИКАЄТЬСЯ' || data.status === 'CALLED',
+                        'bg-blue-500/20 text-blue-400 border border-blue-500/30': data.status === 'ОБСЛУГОВУЄТЬСЯ' || data.status === 'SERVED',
+                        'bg-slate-700 text-slate-400': data.status === 'СКАСОВАНО' || data.status === 'ПОВЕРНЕНО' || data.status === 'DONE'
+                     }">
+                    <span x-text="data.status || 'Завантаження...'"></span>
+                </div>
+
+                <!-- Картка деталей (показуємо, коли талон очікує) -->
+                <template x-if="data.status === 'ЧЕКАЄ' || data.status === 'WAITING'">
+                    <div class="space-y-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-700/50 text-left">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Людей перед вами:</span>
+                            <span class="font-bold text-white text-base" x-text="data.position_in_queue + ' груп'"></span>
+                        </div>
+                        <div class="flex justify-between text-sm border-t border-slate-800 pt-2">
+                            <span class="text-slate-400">Орієнтовний час:</span>
+                            <span class="font-bold text-amber-400 text-base" x-text="'~' + data.estimated_wait_minutes + ' хв'"></span>
+                        </div>
+                        <div class="flex justify-between text-sm border-t border-slate-800 pt-2">
+                            <span class="text-slate-400">Ваші розміри:</span>
+                            <span class="font-bold text-slate-200" x-text="data.shoe_sizes?.join(', ')"></span>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Заклик до дії при виклику -->
+                <template x-if="data.status === 'ВИКЛИКАЄТЬСЯ' || data.status === 'CALLED'">
+                    <div class="bg-emerald-900/50 border border-emerald-500/60 p-5 rounded-2xl text-emerald-200 text-center space-y-1">
+                        <div class="text-3xl">⛸️</div>
+                        <p class="font-bold text-lg text-white">Ваша черга підійшла!</p>
+                        <p class="text-sm">Підійдіть, будь ласка, до <strong>Каси 2</strong> для отримання ковзанів.</p>
+                    </div>
+                </template>
+
+                <!-- Можливість змінити талон -->
+                <div class="mt-6 pt-4 border-t border-slate-700/50">
+                    <button @click="resetTicket()" class="text-xs text-slate-400 hover:text-white underline">
+                        Ввести інший номер талона
+                    </button>
+                </div>
+            </div>
+        </template>
+
+    </div>
+
+    <script>
+        function statusApp() {
+            return {
+                ticketNumber: '',
+                inputTicket: '',
+                data: {},
+                searchTicket() {
+                    if (this.inputTicket.toString().trim()) {
+                        window.location.search = `?ticket=${this.inputTicket.toString().trim()}`;
+                    }
+                },
+                resetTicket() {
+                    window.location.href = window.location.pathname;
+                },
+                async fetchStatus() {
+                    if (!this.ticketNumber) return;
+                    try {
+                        const res = await fetch(`/api/public/status/ticket/${this.ticketNumber}`);
+                        if (res.ok) {
+                            this.data = await res.json();
+                        } else {
+                            this.data = { status: 'НЕ ЗНАЙДЕНО' };
+                        }
+                    } catch (e) {
+                        console.error("Помилка завантаження статусу:", e);
+                    }
+                },
+                init() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    this.ticketNumber = urlParams.get('ticket') || '';
+                    if (this.ticketNumber) {
+                        this.fetchStatus();
+                        // Оновлюємо статус кожні 4 секунди
+                        setInterval(() => this.fetchStatus(), 4000);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
