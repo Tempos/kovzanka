@@ -208,8 +208,9 @@
             },
 
             // ---- Талон ----
+            // status.html наразі шукає талон за номером (?ticket=...), не за tracking_token.
             statusLink(ticket) {
-                return '/status?token=' + ticket.tracking_token;
+                return '/status?ticket=' + ticket.ticket_number;
             },
 
             resetForm() {
