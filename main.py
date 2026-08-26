@@ -1,7 +1,7 @@
-from app.api import pages, queue
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.api import pages, queue
 from app.db import engine
 from app.models import Base
 

@@ -2,248 +2,113 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Каса 1 - Реєстрація</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/kasa1.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-    <!-- Повторювані комбінації класів винесені сюди, щоб розмітка нижче не "плила" -->
     <style type="text/tailwindcss">
         @layer components {
-            .card {
-                @apply max-w-2xl mx-auto bg-white rounded-2xl shadow-xl p-8 border border-slate-200;
-            }
-
-            .field-label {
-                @apply block text-sm font-semibold text-slate-700 mb-1;
-            }
-
-            .text-input {
-                @apply w-full px-4 py-2.5 border rounded-xl outline-none text-slate-800
-                focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
-            }
-
-            .chip {
-                @apply bg-blue-100 text-blue-900 font-bold px-3 py-1 rounded-lg text-sm
-                flex items-center gap-2 border border-blue-200;
-            }
-
-            .size-btn {
-                @apply relative py-2.5 rounded-xl font-bold text-base transition border
-                flex flex-col items-center justify-center;
-            }
-
-            .size-btn-active {
-                @apply bg-blue-600 text-white border-blue-600 shadow-md scale-105;
-            }
-
-            .size-btn-idle {
-                @apply bg-white text-slate-700 border-slate-200 hover:bg-slate-100;
-            }
+            .card {@apply max-w-2xl mx-auto bg-white rounded-2xl shadow-xl p-8 border border-slate-200}
+            .field-label {@apply block text-sm font-semibold text-slate-700 mb-1}
+            .text-input {@apply w-full px-4 py-2.5 border rounded-xl outline-none text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500;}
+            .chip {@apply bg-blue-100 text-blue-900 font-bold px-3 py-1 rounded-lg text-sm flex items-center gap-2 border border-blue-200;}
+            .size-btn {@apply relative py-2.5 rounded-xl font-bold text-base transition border flex flex-col items-center justify-center;}
+            .size-btn-active {@apply bg-blue-600 text-white border-blue-600 shadow-md scale-105}
+            .size-btn-idle {@apply bg-white text-slate-700 border-slate-200 hover:bg-slate-100}
         }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-6" x-data="kasa1()">
 <div class="card">
-    <h1 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-        📝 Каса 1: Реєстрація в чергу
-    </h1>
+    <h1 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">📝 Каса 1: Реєстрація в чергу</h1>
 
     <form @submit.prevent="submitForm" class="space-y-6">
-
-        <!-- Телефон з маскою +380 XX XXX XX XX -->
-        <div>
+        <div> <!-- Телефон -->
             <label class="field-label">Номер телефону</label>
-            <input type="tel" x-model="formattedPhone" @input="formatPhone" required
-                   placeholder="+380 63 111 11 11"
-                   class="text-input font-mono text-xl font-medium tracking-wide">
+            <input @input="formatPhone" class="text-input font-mono text-xl font-medium tracking-wide" placeholder="+380 63 111 11 11" required
+                   type="tel"
+                   x-model="formattedPhone">
             <p class="text-xs text-slate-400 mt-1">Просто вводьте цифри номера (наприклад, 0631111111)</p>
         </div>
 
-        <!-- Швидкий вибір розмірів ковзанів -->
-        <div>
+        <div> <!-- Вибір розмірів -->
             <div class="flex justify-between items-center mb-2">
                 <label class="field-label mb-0">Оберіть розміри ковзанів</label>
-                <button type="button" @click="clearSizes()" x-show="shoeSizes.length > 0"
-                        class="text-xs text-red-500 hover:underline">
+                <button @click="clearSizes()" class="text-xs text-red-500 hover:underline" type="button"
+                        x-show="shoeSizes.length > 0">
                     Очистити вибір
                 </button>
             </div>
-
-            <!-- Сітка кнопок розмірів -->
             <div class="grid grid-cols-6 sm:grid-cols-8 gap-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <template x-for="size in availableSizes" :key="size">
-                    <button type="button" @click="addSize(size)"
+                <template :key="size" x-for="size in availableSizes">
+                    <button :class="getSizeCount(size) > 0 ? 'size-btn-active' : 'size-btn-idle'" @click="addSize(size)"
                             class="size-btn"
-                            :class="getSizeCount(size) > 0 ? 'size-btn-active' : 'size-btn-idle'">
+                            type="button">
                         <span x-text="size"></span>
-                        <!-- Бейдж кількості для однакових розмірів -->
-                        <span x-show="getSizeCount(size) > 0" x-text="getSizeCount(size)"
-                              class="absolute -top-2 -right-2 bg-amber-500 text-slate-950 text-xs font-black
-                                         w-5 h-5 rounded-full flex items-center justify-center border border-white">
-                            </span>
+                        <span class="absolute -top-2 -right-2 bg-amber-500 text-slate-950 text-xs font-black w-5 h-5 rounded-full flex items-center justify-center border border-white" x-show="getSizeCount(size) > 0"
+                              x-text="getSizeCount(size)">
+                        </span>
                     </button>
                 </template>
             </div>
-
-            <!-- Список обраних розмірів -->
             <div class="mt-3 min-h-[48px] flex flex-wrap items-center gap-2 p-3 bg-slate-100 rounded-xl border border-slate-200">
-                    <span class="text-xs text-slate-400 font-semibold mr-1" x-show="shoeSizes.length === 0">
-                        Обирайте розміри кліком по кнопках вище
+                <span class="text-xs text-slate-400 font-semibold mr-1" x-show="shoeSizes.length === 0">
+                    Обирайте розміри кліком по кнопках вище
+                </span>
+                <template :key="index" x-for="(size, index) in shoeSizes">
+                    <span class="chip">
+                        <span x-text="'Р-р ' + size"></span>
+                        <button @click="removeSizeAtIndex(index)" class="text-blue-600 hover:text-red-600 font-bold"
+                                type="button">&times;</button>
                     </span>
-                <template x-for="(size, index) in shoeSizes" :key="index">
-                        <span class="chip">
-                            <span x-text="'Р-р ' + size"></span>
-                            <button type="button" @click="removeSizeAtIndex(index)"
-                                    class="text-blue-600 hover:text-red-600 font-bold">&times;</button>
-                        </span>
                 </template>
             </div>
         </div>
 
-        <!-- Коментар -->
-        <div>
-            <label class="field-label">Коментар (Опціонально)</label>
-            <input type="text" x-model="comment" placeholder="напр., Сім'я з дітьми, День народження"
-                   class="text-input">
+        <div> <!-- Тривалість сеансу -->
+            <label class="field-label">Тривалість катання</label>
+            <div class="grid grid-cols-5 gap-2">
+                <template :key="dur" x-for="dur in availableDurations">
+                    <button :class="durationMinutes === dur ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'" @click="durationMinutes = dur"
+                            class="py-2 rounded-xl font-bold text-sm border transition"
+                            type="button">
+                        <span x-text="dur + ' хв'"></span>
+                    </button>
+                </template>
+            </div>
         </div>
 
-        <!-- Кнопка відправки -->
-        <button type="submit" :disabled="!canSubmit"
-                class="w-full bg-blue-600 disabled:bg-slate-300 text-white py-3.5 rounded-xl
-                           font-bold text-lg hover:bg-blue-700 transition shadow-lg disabled:shadow-none">
-            Зареєструвати в чергу (<span x-text="shoeSizes.length"></span> чол.)
+        <div> <!-- Коментар -->
+            <label class="field-label">Коментар (Опціонально)</label>
+            <input class="text-input" placeholder="напр., Сім'я з дітьми, День народження" type="text"
+                   x-model="comment">
+        </div>
+
+        <!-- Кнопка підтвердження -->
+        <button :disabled="!canSubmit" class="w-full bg-blue-600 disabled:bg-slate-300 text-white py-3.5 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg disabled:shadow-none"
+                type="submit">
+            Зареєструвати в чергу (<span x-text="shoeSizes.length"></span> чол., <span x-text="durationMinutes"></span>
+            хв)
         </button>
     </form>
 
-    <!-- Блок успішного створення талона -->
-    <template x-if="createdTicket">
+    <template x-if="createdTicket"> <!-- Успішне створення -->
         <div class="mt-6 p-5 bg-emerald-50 border border-emerald-300 rounded-2xl text-center space-y-2">
             <p class="text-emerald-800 font-bold">Гостя успішно зареєстровано!</p>
             <div class="text-4xl font-black text-emerald-600" x-text="'Талон №' + createdTicket.ticket_number"></div>
             <div class="text-sm text-slate-600">
                 Телефон: <span class="font-mono font-bold" x-text="createdTicket.phone"></span> |
+                Сеанс: <span class="font-bold text-blue-600" x-text="createdTicket.duration_minutes + ' хв'"></span> |
                 Розміри: <span class="font-bold" x-text="createdTicket.shoe_sizes.join(', ')"></span>
             </div>
             <p class="text-xs text-slate-400">
                 Лінк статусу:
-                <a :href="statusLink(createdTicket)" target="_blank" class="underline text-blue-600 font-mono"
+                <a :href="statusLink(createdTicket)" class="underline text-blue-600 font-mono" target="_blank"
                    x-text="statusLink(createdTicket)"></a>
             </p>
         </div>
     </template>
 </div>
-
-<script>
-    // ---- Константи ----
-    const LOCAL_PHONE_DIGITS = 9;          // XX XXX XX XX (без коду країни й ведучого нуля)
-    const MIN_SHOE_SIZE = 26;
-    const MAX_SHOE_SIZE = 48;
-
-    function kasa1() {
-        return {
-            // ---- Стан форми ----
-            formattedPhone: '+380 ',
-            rawDigits: '',
-            shoeSizes: [],
-            comment: '',
-            createdTicket: null,
-            availableSizes: Array.from(
-                {length: MAX_SHOE_SIZE - MIN_SHOE_SIZE + 1},
-                (_, i) => MIN_SHOE_SIZE + i
-            ),
-
-            // ---- Похідний стан ----
-            get canSubmit() {
-                return this.shoeSizes.length > 0 && this.rawDigits.length >= LOCAL_PHONE_DIGITS;
-            },
-
-            // ---- Телефон ----
-            formatPhone() {
-                const digits = this.extractDigits(this.formattedPhone);
-                this.rawDigits = digits;
-                this.formattedPhone = this.buildPhoneMask(digits);
-            },
-
-            // Прибирає все, крім цифр, і зводить до "локального" номера без коду країни
-            // й без ведучого нуля (9 цифр), незалежно від того, як його ввели:
-            // 0631111111, 380631111111, +380 63 111 11 11 тощо.
-            extractDigits(value) {
-                let digits = value.replace(/\D/g, '');
-                if (digits.startsWith('380')) {
-                    digits = digits.substring(3);
-                } else if (digits.startsWith('38')) {
-                    digits = digits.substring(2);
-                }
-                if (digits.startsWith('0')) {
-                    digits = digits.substring(1);
-                }
-                return digits.substring(0, LOCAL_PHONE_DIGITS);
-            },
-
-            // Збирає маску вигляду "+380 XX XXX XX XX" із локальних цифр ("XX XXX XX XX")
-            buildPhoneMask(digits) {
-                const parts = [
-                    digits.substring(0, 2),
-                    digits.substring(2, 5),
-                    digits.substring(5, 7),
-                    digits.substring(7, 9),
-                ].filter(Boolean);
-
-                return '+380 ' + parts.join(' ');
-            },
-
-            // ---- Розміри ----
-            addSize(size) {
-                this.shoeSizes.push(size);
-            },
-            getSizeCount(size) {
-                return this.shoeSizes.filter(s => s === size).length;
-            },
-            removeSizeAtIndex(index) {
-                this.shoeSizes.splice(index, 1);
-            },
-            clearSizes() {
-                this.shoeSizes = [];
-            },
-
-            // ---- Талон ----
-            // status.html наразі шукає талон за номером (?ticket=...), не за tracking_token.
-            statusLink(ticket) {
-                return '/status?ticket=' + ticket.ticket_number;
-            },
-
-            resetForm() {
-                this.formattedPhone = '+380 ';
-                this.rawDigits = '';
-                this.shoeSizes = [];
-                this.comment = '';
-            },
-
-            async submitForm() {
-                if (!this.canSubmit) return;
-
-                const fullPhone = '+380' + this.rawDigits; // E.164 для збереження в БД
-                const displayPhone = this.formattedPhone;  // запам'ятовуємо до resetForm()
-
-                const response = await fetch('/api/queue', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        phone: fullPhone,
-                        shoe_sizes: this.shoeSizes,
-                        comment: this.comment || null,
-                    }),
-                });
-
-                if (!response.ok) return;
-
-                this.createdTicket = await response.json();
-                this.createdTicket.phone = displayPhone;
-                this.resetForm();
-            },
-        };
-    }
-</script>
 </body>
 </html>

@@ -1,5 +1,8 @@
+from datetime import timedelta, datetime, timezone
 from typing import List
+
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 
 from app.db import DBSession
 from app.models import QueueItem, QueueStatus
@@ -44,6 +47,7 @@ async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
         phone=req.phone,
         people_count=len(req.shoe_sizes),
         shoe_sizes=req.shoe_sizes,
+        duration_minutes=req.duration_minutes,
         comment=req.comment,
     )
     db.add(item)
@@ -56,12 +60,37 @@ async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
 
 @router.patch("/queue/{item_id}/status", response_model=QueueItemResponse)
 async def update_status(item_id: int, status: QueueStatus, db: DBSession):
-    item = db.query(QueueItem).filter(QueueItem.id == item_id).first()
-    if not item:
+    if not (item := db.get(QueueItem, item_id)):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
 
     item.status = status
+
+    if status == QueueStatus.SERVED and not item.session_start:
+        now = datetime.now(timezone.utc)
+        item.session_start = now
+        item.session_end = now + timedelta(minutes=item.duration_minutes)
+
     db.commit()
+    db.refresh(item)
+    await manager.broadcast("QUEUE_UPDATED")
+    return item
+
+
+class ExtendSessionRequest(BaseModel):
+    minutes: int = 15
+
+
+@router.patch("/queue/{item_id}/extend", response_model=QueueItemResponse)
+async def extend_session(item_id: int, payload: ExtendSessionRequest, db: DBSession):
+    if not (item := db.get(QueueItem, item_id)):
+        raise HTTPException(status_code=404, detail="Запис не знайдено")
+
+    item.duration_minutes += payload.minutes
+    if item.session_end:
+        item.session_end += timedelta(minutes=payload.minutes)
+
+    db.commit()
+    db.refresh(item)
 
     await manager.broadcast("QUEUE_UPDATED")
     return item

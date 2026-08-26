@@ -1,12 +1,20 @@
+from datetime import datetime
 from typing import List, Optional
+
 from pydantic import BaseModel, ConfigDict
+
 from app.models import QueueStatus
 
 
 class CreateQueueRequest(BaseModel):
     phone: str
     shoe_sizes: List[int]
+    duration_minutes: int = 60
     comment: Optional[str] = None
+
+
+class ExtendSessionRequest(BaseModel):
+    minutes: int = 15  # За замовчуванням +15 хвилин
 
 
 class UserStatusResponse(BaseModel):
@@ -25,7 +33,10 @@ class QueueItemResponse(BaseModel):
     phone: str
     people_count: int
     shoe_sizes: List[int]
-    comment: Optional[str]
+    comment: Optional[str] = None
     status: QueueStatus
+    duration_minutes: int
+    session_start: Optional[datetime]
+    session_end: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)

@@ -1,7 +1,8 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
+
 from sqlalchemy import JSON, DateTime, Enum, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 
@@ -31,6 +32,11 @@ class QueueItem(Base):
     shoe_sizes: Mapped[list] = mapped_column(JSON)
     comment: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     status: Mapped[QueueStatus] = mapped_column(
-        Enum(QueueStatus), default=QueueStatus.WAITING
+        Enum(QueueStatus), default=QueueStatus.WAITING, index=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=60)
+    session_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    session_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc))

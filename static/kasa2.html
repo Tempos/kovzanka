@@ -2,28 +2,22 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Каса 2 - Видача ковзанів</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/kasa2.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-8" x-data="kasa2App()">
 <div class="max-w-6xl mx-auto">
     <!-- Шапка -->
     <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-800">Каса №2: Видача ковзанів</h1>
-            <div class="flex items-center space-x-2 mt-1">
-                <span class="w-2.5 h-2.5 rounded-full"
-                      :class="wsConnected ? 'bg-green-500 animate-pulse' : 'bg-amber-500'"></span>
-                <span class="text-xs font-mono text-gray-500"
-                      x-text="wsConnected ? 'ЗВ'ЯЗОК АКТИВНИЙ (WS)' : 'ПЕРЕПІДКЛЮЧЕННЯ...'"></span>
-            </div>
+        <h1 class="text-3xl font-bold text-gray-800">Каса №2: Видача ковзанів</h1>
+        <div class="flex items-center space-x-2 mt-1">
+            <span :class="wsStatus.class" class="w-2.5 h-2.5 rounded-full transition-colors"></span>
+            <span class="text-xs font-mono text-gray-500" x-text="wsStatus.text"></span>
         </div>
-        <button @click="fetchQueue()"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow">
-            Оновити вручну
-        </button>
     </div>
 
     <!-- Таблиця черги -->
@@ -31,159 +25,104 @@
         <table class="min-w-full divide-y divide-gray-200 border-collapse">
             <thead class="bg-gray-50">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">№ Талона</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">№</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Телефон</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Розміри</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Час / Сеанс</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Дії</th>
             </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-            <template x-for="item in queue" :key="item.id">
+            <template :key="item.id" x-for="item in queue">
                 <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 whitespace-nowrap text-lg font-bold text-gray-900"
-                        x-text="'#' + item.ticket_number"></td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-700"
-                        x-text="formatPhone(item.phone)"></td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800"
-                        x-text="item.shoe_sizes ? item.shoe_sizes.join(', ') : ''"></td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                      :class="{
-                                          'bg-yellow-100 text-yellow-800': item.status === 'ЧЕКАЄ',
-                                          'bg-green-100 text-green-800': item.status === 'ВИКЛИКАЄТЬСЯ',
-                                          'bg-blue-100 text-blue-800': item.status === 'ОБСЛУГОВУЄТЬСЯ',
-                                          'bg-purple-100 text-purple-800': item.status === 'ПОВЕРНЕНО',
-                                          'bg-red-100 text-red-800': item.status === 'СКАСОВАНО'
-                                      }"
-                                      x-text="item.status">
-                                </span>
+                    <!--TICKET-->
+                    <td class="px-6 py-4 whitespace-nowrap text-lg font-bold text-gray-900" x-text="'#' + item.ticket_number"></td>
+
+                    <!--PHONE / COMMENT-->
+                    <!--<td class="px-6 py-4 whitespace-nowrap text-sm font-mono font-bold text-gray-700" x-text="formatPhone(item.phone)"></td>-->
+                    <td class="px-4 py-3 align-middle">
+                        <div class="font-mono font-bold text-slate-900 leading-tight whitespace-nowrap" x-text="formatPhone(item.phone)"></div>
+                        <template x-if="item.comment">
+                            <div :title="item.comment" class="mt-1 text-xs text-amber-800 bg-amber-50 px-1.5 py-0.5
+                            rounded border border-amber-200/60 max-w-[160px] truncate cursor-help leading-tight">
+                                💬 <span x-text="item.comment"></span>
+                            </div>
+                        </template>
                     </td>
+
+                    <!--SIZES-->
+                    <td class="px-2 py-3 w-[170px]">
+                        <div class="grid grid-cols-5 gap-1">
+                            <template :key="size" x-for="size in item.shoe_sizes">
+                                <span class="h-6 flex items-center justify-center bg-slate-100 text-slate-800 text-xs font-bold rounded border border-slate-200">
+                                    <span x-text="size"></span>
+                                </span>
+                            </template>
+                        </div>
+                    </td>
+
+                    <!--TIME-->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono font-bold">
+                        <div class="flex flex-col">
+                            <span class="text-gray-600" x-text="item.duration_minutes ? item.duration_minutes + ' хв' : '—'"></span>
+
+                            <!-- Target End Time -->
+                            <template x-if="item.session_end">
+                                <span class="text-xs text-blue-600" x-text="'до ' + formatTime(item.session_end)"></span>
+                            </template>
+
+                            <!-- Overtime Badge (Shown inside the time cell when session end is exceeded) -->
+                            <template x-if="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && getOverdueMinutes(item.session_end) > 0">
+                                <span :title="'Протерміновано на ' + getOverdueMinutes(item.session_end) + ' хв'"
+                                      class="mt-1 inline-flex items-center w-max px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 animate-pulse cursor-help">
+                                    ⏱️ +<span x-text="getOverdueMinutes(item.session_end)"></span> хв
+                                </span>
+                            </template>
+                        </div>
+                    </td>
+
+                    <!--STATUS-->
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span :class="{
+                                  'bg-yellow-100 text-yellow-800': item.status === 'ЧЕКАЄ',
+                                  'bg-green-100 text-green-800': item.status === 'ВИКЛИКАЄТЬСЯ',
+                                  'bg-blue-100 text-blue-800': item.status === 'ОБСЛУГОВУЄТЬСЯ',
+                                  'bg-purple-100 text-purple-800': item.status === 'ПОВЕРНЕНО',
+                                  'bg-red-100 text-red-800': item.status === 'СКАСОВАНО'
+                              }"
+                              class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                              x-text="item.status">
+                        </span>
+                    </td>
+
+                    <!--BUTTONS-->
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                         <button @click="changeStatus(item.id, 'ВИКЛИКАЄТЬСЯ')"
-                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs transition">
-                            Викликати
+                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs transition">Викликати
                         </button>
                         <button @click="changeStatus(item.id, 'ОБСЛУГОВУЄТЬСЯ')"
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition">
-                            Видати
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition">Видати
+                        </button>
+                        <button @click="extendSession(item.id, 15)"
+                                class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2 py-1 rounded text-xs transition"
+                                x-show="item.status === 'ОБСЛУГОВУЄТЬСЯ'">+15 хв
                         </button>
                         <button @click="changeStatus(item.id, 'ПОВЕРНЕНО')"
-                                class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition">
-                            Прийняти
+                                class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition">Прийняти
                         </button>
                         <button @click="changeStatus(item.id, 'СКАСОВАНО')"
-                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition">
-                            Скасувати
+                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition">Скасувати
                         </button>
                     </td>
                 </tr>
             </template>
             </tbody>
         </table>
-
         <template x-if="queue.length === 0">
-            <div class="text-center py-8 text-gray-500">
-                Активних квитків у черзі немає
-            </div>
+            <div class="text-center py-8 text-gray-500">Активних квитків у черзі немає</div>
         </template>
     </div>
 </div>
-
-<script>
-    function kasa2App() {
-        return {
-            queue: [],
-            wsConnected: false,
-            socket: null,
-
-            formatPhone(phone) {
-                if (!phone) return '—';
-                let cleaned = ('' + phone).replace(/\D/g, '');
-
-                if (cleaned.length === 10) {
-                    cleaned = '38' + cleaned;
-                }
-
-                const match = cleaned.match(/^(\d{2})(\d{3})(\d{3})(\d{2})(\d{2})$/);
-                if (match) {
-                    return `+${match[1]} ${match[2]} ${match[3]} ${match[4]} ${match[5]}`;
-                }
-
-                return phone;
-            },
-
-            async fetchQueue() {
-                try {
-                    const response = await fetch('/api/queue');
-                    if (response.ok) {
-                        this.queue = await response.json();
-                    }
-                } catch (e) {
-                    console.error("Помилка завантаження черги:", e);
-                }
-            },
-
-            async changeStatus(itemId, newStatus) {
-                try {
-                    const response = await fetch(`/api/queue/${itemId}/status?status=${encodeURIComponent(newStatus)}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (response.ok) {
-                        await this.fetchQueue();
-                    } else {
-                        console.error("Помилка оновлення статусу:", await response.json());
-                    }
-                } catch (e) {
-                    console.error("Помилка запиту зміни статусу:", e);
-                }
-            },
-
-            connectWebSocket() {
-                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${wsProtocol}//${window.location.host}/api/ws/queue`;
-
-                this.socket = new WebSocket(wsUrl);
-
-                this.socket.onopen = () => {
-                    console.log("Каса 2: WebSocket підключено");
-                    this.wsConnected = true;
-                    this.fetchQueue();
-                };
-
-                this.socket.onmessage = (event) => {
-                    console.log("Каса 2 отримала оновлення:", event.data);
-                    this.fetchQueue();
-                };
-
-                this.socket.onerror = (error) => {
-                    console.error("Каса 2 WebSocket помилка:", error);
-                };
-
-                this.socket.onclose = () => {
-                    console.warn("Каса 2: WebSocket відключено. Повторна спроба через 2 сек...");
-                    this.wsConnected = false;
-                    setTimeout(() => {
-                        this.connectWebSocket();
-                    }, 2000);
-                };
-            },
-
-            init() {
-                this.fetchQueue();
-                this.connectWebSocket();
-
-                // Резервний polling кожні 3 секунди
-                setInterval(() => {
-                    this.fetchQueue()
-                }, 3000);
-            }
-        }
-    }
-</script>
 </body>
 </html>
