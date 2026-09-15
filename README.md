@@ -5,7 +5,7 @@ MVP-застосунок на FastAPI для реєстрації відвіду
 
 ## Стек
 
-- **Python** 3.14+
+- **Python** 3.10+
 - **FastAPI** — веб-фреймворк
 - **SQLAlchemy** — робота з базою даних
 - **Uvicorn** — ASGI-сервер
@@ -17,18 +17,19 @@ MVP-застосунок на FastAPI для реєстрації відвіду
 kovzanka/
 ├── app/                    # backend-код застосунку
 │   ├── api/                # ендпоінти API
-│   ├── db.py                # підключення до бази даних (SQLAlchemy engine/session)
-│   ├── models.py             # моделі БД (SQLAlchemy)
-│   ├── schemas.py            # схеми запитів/відповідей (Pydantic)
-│   └── ws_manager.py          # менеджер WebSocket-з'єднань (живе оновлення табло)
+│   ├── db.py               # підключення до бази даних (SQLAlchemy engine/session)
+│   ├── models.py           # моделі БД (SQLAlchemy)
+│   ├── schemas.py          # схеми запитів/відповідей (Pydantic)
+│   └── ws_manager.py       # менеджер WebSocket-з'єднань (живе оновлення табло)
 ├── static/                 # фронтенд-сторінки (звичайний HTML + Alpine.js)
-│   ├── index.html            # головна / навігація між касами
-│   ├── kasa1.html             # каса реєстрації №1
-│   ├── kasa2.html             # каса реєстрації №2
-│   ├── display.html           # табло черги (оновлюється через WebSocket)
-│   └── status.html            # сторінка статусу талона за токеном
-├── ice_rink.db              # SQLite-база даних (створюється автоматично)
-├── main.py                  # точка входу — FastAPI-застосунок
+|   ├── js/                 # фронтенд-сторінки (винесені методи *.js)
+│   ├── index.html          # головна / навігація між касами
+│   ├── kasa1.html          # каса реєстрації №1
+│   ├── kasa2.html          # каса реєстрації №2
+│   ├── display.html        # табло черги (оновлюється через WebSocket)
+│   └── status.html         # сторінка статусу талона за токеном
+├── ice_rink.db             # SQLite-база даних (створюється автоматично)
+├── main.py                 # точка входу — FastAPI-застосунок
 ├── pyproject.toml
 └── uv.lock
 ```
@@ -39,7 +40,7 @@ kovzanka/
 ## Вимоги
 
 - Встановлений [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- Python 3.14 (uv підтягне потрібну версію автоматично, якщо її ще немає)
+- Python 3.10 (uv підтягне потрібну версію автоматично, якщо її ще немає)
 
 ## Встановлення
 
@@ -80,6 +81,30 @@ http://127.0.0.1:8000/docs
 - **Каси реєстрації** (`kasa1.html`, `kasa2.html`) — форми реєстрації гостя в чергу з вибором розмірів ковзанів.
 - **Табло черги** (`display.html`) — екран для загального перегляду, оновлюється в реальному часі через WebSocket (`app/ws_manager.py`).
 - **Статус талона** (`status.html`) — сторінка перевірки статусу за токеном (`/status?token=...`).
+
+## Workflow
+```mermaid
+sequenceDiagram
+    actor Kasa1Page
+    participant QueueAPI as FastAPIQueueAPI
+    participant DB as DBSession
+    participant WSManager as ConnectionManager
+    participant DisplayPage
+    participant Kasa2Page
+
+    Kasa1Page->>QueueAPI: submitForm() POST /api/queue
+    QueueAPI->>DB: create_queue_entry(req, db)
+    DB-->>QueueAPI: QueueItem
+    QueueAPI->>WSManager: broadcast("QUEUE_UPDATED")
+    WSManager-->>DisplayPage: WebSocket message
+    WSManager-->>Kasa2Page: WebSocket message
+    DisplayPage->>QueueAPI: fetchQueue() GET /api/queue
+    Kasa2Page->>QueueAPI: fetchQueue() GET /api/queue
+    QueueAPI->>DB: get_full_queue(db)
+    DB-->>QueueAPI: List[QueueItem]
+    QueueAPI-->>DisplayPage: QueueItemResponse[]
+    QueueAPI-->>Kasa2Page: QueueItemResponse[]
+```
 
 ## Зупинка
 
