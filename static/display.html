@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Табло черги - Ковзанка</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/shared.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6 font-sans" x-data="displayApp()">
+<div class="max-w-7xl mx-auto">
+    <header class="flex justify-between items-center pb-6 border-b border-gray-800 mb-8">
+        <h1 class="text-4xl font-black uppercase tracking-wider text-blue-400">Електронна Черга</h1>
+        <div class="flex items-center space-x-3">
+            <span :class="wsStatus.class" class="w-3 h-3 rounded-full transition-colors"></span>
+            <span class="text-sm font-mono text-gray-400" x-text="wsStatus.text"></span>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- INVITATIONS  -->
+        <div class="bg-gray-800/80 rounded-2xl p-6 border border-green-500/30 shadow-2xl">
+            <h2 class="text-2xl font-bold text-green-400 mb-6 flex items-center uppercase tracking-wide">
+                <span class="inline-block w-4 h-4 bg-green-500 rounded-full mr-3 animate-ping"></span>Запрошуються
+            </h2>
+            <div class="grid grid-cols-2 gap-4">
+                <template :key="item.id" x-for="item in callingItems">
+                    <div class="bg-green-950/80 border-2 border-green-500 rounded-xl p-4 text-center transform scale-102 transition">
+                        <span class="text-5xl font-black text-green-400 font-mono" x-text="'#' + item.ticket_number"></span>
+                        <div class="text-lg text-gray-300 font-mono" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                        <div class="text-ls text-gray-300 font-mono" x-text="'Розмір(и): ' + (item.shoe_sizes || '—')"></div>
+                    </div>
+                </template>
+            </div>
+
+            <template x-if="callingItems.length === 0">
+                <div class="text-center py-12 text-gray-500 font-medium text-lg">Немає активних викликів</div>
+            </template>
+        </div>
+
+        <!-- QUEUED  -->
+        <div class="bg-gray-800/80 rounded-2xl p-6 border border-gray-700 shadow-2xl">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-6 uppercase tracking-wide">Готуються (Очікують)</h2>
+            <div class="grid grid-cols-3 gap-3">
+                <template :key="item.id" x-for="item in waitingItems">
+                    <div class="bg-gray-900 border border-gray-700 rounded-lg p-3 text-center">
+                        <span class="text-3xl font-bold text-yellow-300 font-mono" x-text="'#' + item.ticket_number"></span>
+                        <div class="text-lg text-gray-300 font-mono" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                        <div class="text-ls text-gray-300 font-mono" x-text="'Розмір(и): ' + (item.shoe_sizes || '—')"></div>
+                    </div>
+                </template>
+            </div>
+
+            <template x-if="waitingItems.length === 0">
+                <div class="text-center py-12 text-gray-500 font-medium text-lg">Черга порожня</div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+    function displayApp() {
+        return {
+            callingItems: [],
+            waitingItems: [],
+            wsConnected: false,
+            socket: null,
+
+            async fetchQueue() {
+                try {
+                    const response = await fetch("/api/queue")
+                    if (response.ok) {
+                        const data = await response.json()
+                        this.callingItems = data.filter(item => item.status === "ВИКЛИКАЄТЬСЯ")
+                        this.waitingItems = data.filter(item => item.status === "ЧЕКАЄ").slice(0, 12)
+                    }
+                } catch (e) {console.error("Помилка завантаження черги:", e)}
+            },
+
+            get wsStatus() { return getWsStatus(this.wsConnected) },
+
+            init() {
+                this.fetchQueue()
+                setInterval(() => {this.fetchQueue()}, 3000)
+                createQueueWebSocket({
+                    onOpen: () => {
+                        this.wsConnected = true
+                        this.fetchQueue()
+                    },
+                    onMessage: () => this.fetchQueue(),
+                    onClose: () => { this.wsConnected = false }
+                })
+            }
+        }
+    }
+</script>
+</body>
+</html>

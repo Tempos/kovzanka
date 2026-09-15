@@ -1,0 +1,10 @@
+[project]
+name = "kovzanka"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.141.1",
+    "pydantic>=2.13.4",
+    "sqlalchemy>=2.0.52",
+    "uvicorn[standard]>=0.52.3",
+]
