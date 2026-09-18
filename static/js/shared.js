@@ -8,9 +8,29 @@ function formatPhone(phone) {
 }
 
 function formatTime(isoString) {
-    if (!isoString) return ""
-    const timePart = isoString.includes("T") ? isoString.split("T")[1] : isoString.split(" ")[1]
-    return timePart ? timePart.substring(0, 5) : ""
+    const date = parseServerDate(isoString)
+    if (!date) return ""
+    return date.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", hour12: false})
+}
+
+// Parses a server timestamp into a Date, unambiguously.
+// The backend stores naive timestamps with NO timezone marker
+// (e.g. "2026-09-18 20:11:55.800391"), but those values are UTC
+// (Python's datetime.utcnow()-style naive UTC), not local time.
+// If a string already carries an explicit timezone (Z or +hh:mm), trust it.
+// Otherwise, parse the components explicitly as UTC — never let the
+// browser's ambiguous/local-time guessing shift the instant by our
+// UTC offset (this was the source of the "already 90 min overdue
+// right after starting" bug).
+function parseServerDate(isoString) {
+    if (!isoString) return null
+    if (/[Zz]|[+-]\d{2}:?\d{2}$/.test(isoString)) {
+        return new Date(isoString)
+    }
+    const [datePart, timePart] = isoString.split(/[T ]/)
+    const [year, month, day] = datePart.split("-").map(Number)
+    const [hour = 0, minute = 0, second = 0] = (timePart || "").split(":").map(s => parseFloat(s))
+    return new Date(Date.UTC(year, month - 1, day, hour, minute, Math.floor(second || 0)))
 }
 
 function getWsStatus(wsConnected) {
