@@ -6,9 +6,11 @@
     <title>Статус у черзі</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/static/js/shared.js"></script>
+    <script src="/static/js/status.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4" x-data="statusApp()" x-init="init()">
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4" x-data="statusApp()"
+      x-init="init()">
 <div class="w-full max-w-md bg-slate-800 rounded-3xl p-6 shadow-2xl text-center border border-slate-700">
 
     <!-- Пошукове поле, якщо номер талона відсутній в URL -->
@@ -16,10 +18,14 @@
         <div class="space-y-4">
             <h2 class="text-xl font-bold">Введіть номер талона</h2>
             <div class="flex gap-2">
-                <input @keyup.enter="searchTicket()" class="flex-1 bg-slate-900 border border-slate-700 px-4 py-2 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Наприклад: 106"
+                <input @keyup.enter="searchTicket()"
+                       class="flex-1 bg-slate-900 border border-slate-700 px-4 py-2 rounded-xl text-white outline-none focus:border-blue-500"
+                       placeholder="Наприклад: 106"
                        type="number"
                        x-model="inputTicket">
-                <button @click="searchTicket()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl font-bold">Знайти</button>
+                <button @click="searchTicket()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl font-bold">
+                    Знайти
+                </button>
             </div>
         </div>
     </template>
@@ -28,7 +34,8 @@
     <template x-if="ticketNumber">
         <div>
             <p class="text-slate-400 text-sm font-semibold uppercase tracking-wider">Ваш номер у черзі</p>
-            <h1 class="text-7xl font-black text-blue-400 my-3" x-text="data.ticket_number ? '#' + data.ticket_number : '#' + ticketNumber">#---</h1>
+            <h1 class="text-7xl font-black text-blue-400 my-3"
+                x-text="data.ticket_number ? '#' + data.ticket_number : '#' + ticketNumber">#---</h1>
 
             <!-- Плашка статусу -->
             <div :class="{
@@ -50,7 +57,8 @@
                     </div>
                     <div class="flex justify-between text-sm border-t border-slate-800 pt-2">
                         <span class="text-slate-400">Орієнтовний час:</span>
-                        <span class="font-bold text-amber-400 text-base" x-text="'~' + data.estimated_wait_minutes + ' хв'"></span>
+                        <span class="font-bold text-amber-400 text-base"
+                              x-text="'~' + data.estimated_wait_minutes + ' хв'"></span>
                     </div>
                     <div class="flex justify-between text-sm border-t border-slate-800 pt-2">
                         <span class="text-slate-400">Ваші розміри:</span>
@@ -76,43 +84,5 @@
         </div>
     </template>
 </div>
-
-<script>
-    function statusApp() {
-        return {
-            ticketNumber: "", inputTicket: "", data: {}, pollInterval: null,
-
-            searchTicket() {if (this.inputTicket.toString().trim()) {window.location.search = `?ticket=${this.inputTicket.toString().trim()}`}},
-            resetTicket() {
-                if (this.pollInterval) clearInterval(this.pollInterval)
-                window.location.href = window.location.pathname
-            },
-
-            async fetchStatus() {
-                if (!this.ticketNumber) return
-                try {
-                    const res = await fetch(`/api/public/status/ticket/${this.ticketNumber}`)
-                    if (res.ok) {this.data = await res.json()} else {this.data = {status: "НЕ ЗНАЙДЕНО"}}
-                } catch (e) {console.error("Помилка завантаження статусу:", e)}
-            },
-
-            init() {
-                const urlParams = new URLSearchParams(window.location.search)
-                this.ticketNumber = urlParams.get("ticket") || ""
-                if (this.ticketNumber) {
-                    this.fetchStatus()
-                    this.pollInterval = setInterval(() => this.fetchStatus(), 5000)
-
-                    createQueueWebSocket({
-                        onMessage: () => this.fetchStatus(),
-                        onOpen: () => this.fetchStatus()
-                    })
-                    document.addEventListener("visibilitychange", () => {if (document.visibilityState === "visible") this.fetchStatus()})
-                    window.addEventListener("pageshow", (event) => {if (event.persisted) this.fetchStatus()})
-                }
-            }
-        }
-    }
-</script>
 </body>
 </html>
