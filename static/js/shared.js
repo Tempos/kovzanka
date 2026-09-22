@@ -67,3 +67,37 @@ function createQueueWebSocket({onMessage, onOpen, onClose}) {
     connect()
     return {get instance() { return socket }}
 }
+// Compact size summary for the display board: groups duplicate sizes with a
+// ×count instead of repeating them, and packs as many groups as fit on one
+// line (by character budget, not a flat group count) before folding the rest
+// into a "+N" tail. maxChars=21 was calibrated against the actual card width
+// in display.html (grid-cols-3 card at text-xs, ui-monospace) - see the
+// "Розмір(и): " label shares the line with this text, so budget is tight.
+function formatSizesSummary(sizes, maxChars = 21) {
+    if (!sizes || sizes.length === 0) return "—"
+
+    const counts = {}
+    for (const s of sizes) counts[s] = (counts[s] || 0) + 1
+    const uniqueSizes = Object.keys(counts).map(Number).sort((a, b) => a - b)
+    const groupStrs = uniqueSizes.map(s => counts[s] > 1 ? `${s}×${counts[s]}` : `${s}`)
+
+    let shown = 0, len = 0
+    while (shown < groupStrs.length) {
+        const addLen = (shown === 0 ? groupStrs[shown].length : 2 + groupStrs[shown].length) // ", "
+        const remainingAfter = groupStrs.length - shown - 1
+        // reserve room for the eventual "+N" tail, if one will still be needed after adding this group
+        const shownPeopleIfAdded = uniqueSizes.slice(0, shown + 1).reduce((sum, s) => sum + counts[s], 0)
+        const tailLen = remainingAfter > 0 ? 3 + String(sizes.length - shownPeopleIfAdded).length : 0
+        if (len + addLen + tailLen > maxChars) break
+        len += addLen
+        shown++
+    }
+
+    const parts = groupStrs.slice(0, shown)
+    if (shown < groupStrs.length) {
+        const shownPeople = uniqueSizes.slice(0, shown).reduce((sum, s) => sum + counts[s], 0)
+        parts.push(`+${sizes.length - shownPeople}`)
+    }
+
+    return parts.join(", ")
+}
