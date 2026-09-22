@@ -87,7 +87,7 @@ function formatSizesSummary(sizes, maxChars = 21) {
         const remainingAfter = groupStrs.length - shown - 1
         // reserve room for the eventual "+N" tail, if one will still be needed after adding this group
         const shownPeopleIfAdded = uniqueSizes.slice(0, shown + 1).reduce((sum, s) => sum + counts[s], 0)
-        const tailLen = remainingAfter > 0 ? 3 + String(sizes.length - shownPeopleIfAdded).length : 0
+        const tailLen = remainingAfter > 0 ? 1 + String(sizes.length - shownPeopleIfAdded).length : 0
         if (len + addLen + tailLen > maxChars) break
         len += addLen
         shown++
