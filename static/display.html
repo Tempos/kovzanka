@@ -26,9 +26,10 @@
             </h2>
             <div class="grid grid-cols-2 gap-4">
                 <template :key="item.id" x-for="item in callingItems">
-                    <div class="bg-green-950/80 border-2 border-green-500 rounded-xl p-4 text-center transform scale-102 transition">
-                        <span class="block text-sm text-green-300 font-medium">Талон</span>
+                    <div class="bg-green-950/80 border-2 border-green-500 rounded-xl p-4 text-center transform scale-102 transition min-w-0">
                         <span class="text-5xl font-black text-green-400 font-mono" x-text="'#' + item.ticket_number"></span>
+                        <div class="text-lg text-gray-300 font-mono" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                        <div class="text-xs text-gray-300 font-mono break-words" x-text="'Розмір(и): ' + formatSizesSummary(item.shoe_sizes)"></div>
                     </div>
                 </template>
             </div>
@@ -43,8 +44,10 @@
             <h2 class="text-2xl font-bold text-yellow-400 mb-6 uppercase tracking-wide">Готуються (Очікують)</h2>
             <div class="grid grid-cols-3 gap-3">
                 <template :key="item.id" x-for="item in waitingItems">
-                    <div class="bg-gray-900 border border-gray-700 rounded-lg p-3 text-center">
-                        <span class="text-2xl font-bold text-yellow-300 font-mono" x-text="'#' + item.ticket_number"></span>
+                    <div class="bg-gray-900 border border-gray-700 rounded-lg p-3 text-center min-w-0">
+                        <span class="text-3xl font-bold text-yellow-300 font-mono" x-text="'#' + item.ticket_number"></span>
+                        <div class="text-lg text-gray-300 font-mono" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                        <div class="text-xs text-gray-300 font-mono break-words" x-text="'Розмір(и): ' + formatSizesSummary(item.shoe_sizes)"></div>
                     </div>
                 </template>
             </div>
