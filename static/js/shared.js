@@ -25,12 +25,14 @@ function formatTime(isoString) {
 function parseServerDate(isoString) {
     if (!isoString) return null
     if (/[Zz]|[+-]\d{2}:?\d{2}$/.test(isoString)) {
-        return new Date(isoString)
+        const date = new Date(isoString)
+        return Number.isNaN(date.getTime()) ? null : date
     }
     const [datePart, timePart] = isoString.split(/[T ]/)
     const [year, month, day] = datePart.split("-").map(Number)
     const [hour = 0, minute = 0, second = 0] = (timePart || "").split(":").map(s => parseFloat(s))
-    return new Date(Date.UTC(year, month - 1, day, hour, minute, Math.floor(second || 0)))
+    const date = new Date(Date.UTC(year, month - 1, day, hour, minute, Math.floor(second || 0)))
+    return Number.isNaN(date.getTime()) ? null : date
 }
 
 function getWsStatus(wsConnected) {
