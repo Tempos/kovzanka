@@ -54,7 +54,7 @@
                     <!--SIZES-->
                     <td class="px-2 py-3 w-[170px]">
                         <div class="grid grid-cols-5 gap-1">
-                            <template :key="size" x-for="size in item.shoe_sizes">
+                            <template x-for="(size, idx) in item.shoe_sizes" :key="idx">
                                 <span class="h-6 flex items-center justify-center bg-slate-100 text-slate-800 text-xs font-bold rounded border border-slate-200">
                                     <span x-text="size"></span>
                                 </span>
@@ -65,18 +65,20 @@
                     <!--TIME-->
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-mono font-bold">
                         <div class="flex flex-col">
-                            <span class="text-gray-600" x-text="item.duration_minutes ? item.duration_minutes + ' хв' : '—'"></span>
+                            <!-- Live: counts down while serving, otherwise shows ordered duration -->
+                            <span :class="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && item.session_end ? 'text-blue-700' : 'text-gray-600'"
+                                  x-text="getTimeDisplay(item)"></span>
 
                             <!-- Target End Time -->
                             <template x-if="item.session_end">
                                 <span class="text-xs text-blue-600" x-text="'до ' + formatTime(item.session_end)"></span>
                             </template>
 
-                            <!-- Overtime Badge (Shown inside the time cell when session end is exceeded) -->
-                            <template x-if="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && getOverdueMinutes(item.session_end) > 0">
-                                <span :title="'Протерміновано на ' + getOverdueMinutes(item.session_end) + ' хв'"
+                            <!-- Overtime Badge: ticks up live once session_end has passed -->
+                            <template x-if="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && getOverdueTime(item.session_end)">
+                                <span :title="'Протерміновано на ' + getOverdueTime(item.session_end)"
                                       class="mt-1 inline-flex items-center w-max px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 animate-pulse cursor-help">
-                                    ⏱️ +<span x-text="getOverdueMinutes(item.session_end)"></span> хв
+                                    ⏱️ +<span x-text="getOverdueTime(item.session_end)"></span>
                                 </span>
                             </template>
                         </div>
