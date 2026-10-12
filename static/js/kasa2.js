@@ -47,15 +47,54 @@ function kasa2App() {
         getOverdueMinutes(sessionEndIso) {
             if (!sessionEndIso) return 0
 
-            const endTime = new Date(sessionEndIso).getTime()
+            const endTime = parseServerDate(sessionEndIso)?.getTime()
+            if (!endTime) return 0
             const now = Date.now()
             const diffMinutes = Math.floor((now - endTime) / (1000 * 60))
             return diffMinutes > 0 ? diffMinutes : 0
         },
 
+        // --- LIVE TIMERS ---
+        formatMs(diffMs) {
+            const totalSeconds = Math.floor(diffMs / 1000)
+            const minutes = Math.floor(totalSeconds / 60)
+            const seconds = totalSeconds % 60
+            return `${minutes}:${seconds.toString().padStart(2, "0")}`
+        },
+
+        // Counts down while the session is still active
+        getRemainingTime(sessionEndIso) {
+            const end = parseServerDate(sessionEndIso)
+            if (!end) return null
+            const diffMs = end.getTime() - Date.now()
+            if (diffMs <= 0) return null
+            return this.formatMs(diffMs)
+        },
+
+        // Counts up once the session end has passed
+        getOverdueTime(sessionEndIso) {
+            const end = parseServerDate(sessionEndIso)
+            if (!end) return null
+            const diffMs = Date.now() - end.getTime()
+            if (diffMs <= 0) return null
+            return this.formatMs(diffMs)
+        },
+
+        // What the top line of the TIME cell should show
+        getTimeDisplay(item) {
+            const isActive = item.status === "ОБСЛУГОВУЄТЬСЯ" || item.status === "SERVED"
+            if (isActive && item.session_end) {
+                const remaining = this.getRemainingTime(item.session_end)
+                return remaining ?? "00:00"
+            }
+            return item.duration_minutes ? item.duration_minutes + " хв" : "—"
+        },
+
         async init() {
             await this.fetchQueue()
-            setInterval(() => {this.queue = [...this.queue]}, 30000)
+            // Re-assign every second so Alpine re-evaluates the live timers
+            // (getTimeDisplay / getOverdueTime), which aren't stored in reactive state.
+            setInterval(() => {this.queue = [...this.queue]}, 1000)
 
             createQueueWebSocket({
                 onOpen: () => {
