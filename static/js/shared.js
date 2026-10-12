@@ -76,6 +76,17 @@ function createQueueWebSocket({onMessage, onOpen, onClose}) {
 // in display.html (grid-cols-3 card at text-xs, ui-monospace) - see the
 // "Розмір(и): " label shares the line with this text, so budget is tight.
 function formatSizesSummary(sizes, maxChars = 21) {
+    // FIX: If the backend sends it as a raw JSON string text, parse it into an array immediately
+    if (typeof sizes === 'string') {
+        try {
+            sizes = JSON.parse(sizes);
+        } catch (e) {
+            // If it's a plain string that can't be parsed, turn it into an array or return fallback
+            sizes = sizes ? [sizes] : [];
+        }
+    }
+
+    // Your existing brilliant logic remains completely unchanged below:
     if (!sizes || sizes.length === 0) return "—"
 
     const counts = {}
@@ -85,9 +96,8 @@ function formatSizesSummary(sizes, maxChars = 21) {
 
     let shown = 0, len = 0
     while (shown < groupStrs.length) {
-        const addLen = (shown === 0 ? groupStrs[shown].length : 2 + groupStrs[shown].length) // ", "
+        const addLen = (shown === 0 ? groupStrs[shown].length : 2 + groupStrs[shown].length)
         const remainingAfter = groupStrs.length - shown - 1
-        // reserve room for the eventual "+N" tail, if one will still be needed after adding this group
         const shownPeopleIfAdded = uniqueSizes.slice(0, shown + 1).reduce((sum, s) => sum + counts[s], 0)
         const tailLen = remainingAfter > 0 ? 1 + String(sizes.length - shownPeopleIfAdded).length : 0
         if (len + addLen + tailLen > maxChars) break

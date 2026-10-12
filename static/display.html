@@ -47,7 +47,11 @@
                     <div class="bg-gray-900 border border-gray-700 rounded-lg p-3 text-center min-w-0">
                         <span class="text-3xl font-bold text-yellow-300 font-mono" x-text="'#' + item.ticket_number"></span>
                         <div class="text-lg text-gray-300 font-mono" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
-                        <div class="text-xs text-gray-300 font-mono break-words" x-text="'Розмір(и): ' + formatSizesSummary(item.shoe_sizes)"></div>
+                        <div class="text-xs text-gray-300 font-mono break-words"
+                             x-text="'Розмір(и): ' + (typeof formatSizesSummary === 'function'
+                             ? formatSizesSummary(item.shoe_sizes) : (Array.isArray(item.shoe_sizes)
+                             ? item.shoe_sizes.join(', ') : (item.shoe_sizes || '—')))">
+                        </div>
                     </div>
                 </template>
             </div>
