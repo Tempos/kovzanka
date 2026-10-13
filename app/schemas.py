@@ -17,13 +17,8 @@ class ExtendSessionRequest(BaseModel):
     minutes: int = 15  # За замовчуванням +15 хвилин
 
 
-class UserStatusResponse(BaseModel):
-    ticket_number: int
-    status: QueueStatus
-    people_count: int
-    shoe_sizes: List[int]
-    position_in_queue: int
-    estimated_wait_minutes: int
+class LoginRequest(BaseModel):
+    pin: str
 
 
 class QueueItemResponse(BaseModel):
@@ -40,3 +35,12 @@ class QueueItemResponse(BaseModel):
     session_end: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserStatusResponse(BaseModel):
+    ticket_number: int
+    status: QueueStatus
+    people_count: int
+    shoe_sizes: List[int]
+    position_in_queue: int
+    estimated_wait_minutes: int
