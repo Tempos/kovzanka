@@ -69,6 +69,7 @@ function createQueueWebSocket({onMessage, onOpen, onClose}) {
     connect()
     return {get instance() { return socket }}
 }
+
 // Compact size summary for the display board: groups duplicate sizes with a
 // ×count instead of repeating them, and packs as many groups as fit on one
 // line (by character budget, not a flat group count) before folding the rest
@@ -76,17 +77,12 @@ function createQueueWebSocket({onMessage, onOpen, onClose}) {
 // in display.html (grid-cols-3 card at text-xs, ui-monospace) - see the
 // "Розмір(и): " label shares the line with this text, so budget is tight.
 function formatSizesSummary(sizes, maxChars = 21) {
-    // FIX: If the backend sends it as a raw JSON string text, parse it into an array immediately
+    // If the backend sends it as a raw JSON string text, parse it into an array immediately
     if (typeof sizes === 'string') {
-        try {
-            sizes = JSON.parse(sizes);
-        } catch (e) {
-            // If it's a plain string that can't be parsed, turn it into an array or return fallback
-            sizes = sizes ? [sizes] : [];
-        }
+        try {sizes = JSON.parse(sizes);}
+        catch (e) {sizes = sizes ? [sizes] : [];}
     }
 
-    // Your existing brilliant logic remains completely unchanged below:
     if (!sizes || sizes.length === 0) return "—"
 
     const counts = {}

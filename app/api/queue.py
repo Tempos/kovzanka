@@ -1,15 +1,25 @@
-from datetime import timedelta, datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi import WebSocket, WebSocketDisconnect
+from sqlalchemy.orm import Session
 
-from app.db import DBSession
+from app.api.auth import verify_worker
+from app.db import DBSession, get_db
+from app.inventory import calculate_live_inventory
 from app.models import QueueItem, QueueStatus
-from app.schemas import CreateQueueRequest, UserStatusResponse, QueueItemResponse
+from app.schemas import CreateQueueRequest, UserStatusResponse, QueueItemResponse, ExtendSessionRequest
 from app.ws_manager import manager
 
 router = APIRouter(prefix="/api", tags=["Queue API"])
+
+
+@router.get("/inventory", dependencies=[Depends(verify_worker)])
+def get_inventory_status(db: Session = Depends(get_db)):
+    """Exposes current counts to cashiers. Looks for active ice skaters (SERVED)."""
+    active_skaters = db.query(QueueItem).filter(QueueItem.status == QueueStatus.SERVED).all()
+    return calculate_live_inventory(active_skaters)
 
 
 @router.websocket("/ws/queue")
@@ -76,14 +86,13 @@ async def update_status(item_id: int, status: QueueStatus, db: DBSession):
     return item
 
 
-class ExtendSessionRequest(BaseModel):
-    minutes: int = 15
-
-
-@router.patch("/queue/{item_id}/extend", response_model=QueueItemResponse)
-async def extend_session(item_id: int, payload: ExtendSessionRequest, db: DBSession):
-    if not (item := db.get(QueueItem, item_id)):
+@router.patch("/queue/{item_id}/extend", response_model=QueueItemResponse, dependencies=[Depends(verify_worker)])
+async def extend_session(item_id: int, payload: ExtendSessionRequest, db: Session = Depends(get_db)):
+    if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
+
+    if item.status not in [QueueStatus.SERVED, "SERVED", "ОБСЛУГОВУЄТЬСЯ"]:
+        raise HTTPException(status_code=400, detail="Можна продовжувати лише активні сесії")
 
     item.duration_minutes += payload.minutes
     if item.session_end:
