@@ -1,15 +1,29 @@
 function kasa2App() {
     return {
-        queue: [], wsConnected: false, socket: null, fetchTimer: null,
+        queue: [],
+        wsConnected: false,
+        socket: null,
+        showInventoryModal: false,
+        inventory: {},
+        fetchTimer: null,
+        now: Date.now(), // 1. Реактивна змінна для поточного часу
+
         // --- FORMATTERS ---
         formatPhone, formatTime,
+
+        async fetchInventory() {
+            try {
+                const res = await fetch("/api/inventory")
+                if (res.ok) { this.inventory = await res.json() }
+            } catch (e) { console.error("Помилка завантаження залишків:", e) }
+        },
 
         // --- API ACTIONS ---
         async fetchQueue() {
             try {
                 const response = await fetch("/api/queue")
-                if (response.ok) {this.queue = await response.json()}
-            } catch (e) {console.error("Помилка завантаження черги:", e)}
+                if (response.ok) { this.queue = await response.json() }
+            } catch (e) { console.error("Помилка завантаження черги:", e) }
         },
 
         get wsStatus() { return getWsStatus(this.wsConnected) },
@@ -33,7 +47,7 @@ function kasa2App() {
             const item = this.queue.find(i => i.id === itemId)
             if (!item) return
 
-            try { // 2. Background API call
+            try {
                 const response = await fetch(`/api/queue/${itemId}/extend`, {
                     method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify({minutes})
                 })
@@ -49,8 +63,7 @@ function kasa2App() {
 
             const endTime = parseServerDate(sessionEndIso)?.getTime()
             if (!endTime) return 0
-            const now = Date.now()
-            const diffMinutes = Math.floor((now - endTime) / (1000 * 60))
+            const diffMinutes = Math.floor((this.now - endTime) / (1000 * 60))
             return diffMinutes > 0 ? diffMinutes : 0
         },
 
@@ -66,7 +79,7 @@ function kasa2App() {
         getRemainingTime(sessionEndIso) {
             const end = parseServerDate(sessionEndIso)
             if (!end) return null
-            const diffMs = end.getTime() - Date.now()
+            const diffMs = end.getTime() - this.now
             if (diffMs <= 0) return null
             return this.formatMs(diffMs)
         },
@@ -75,7 +88,7 @@ function kasa2App() {
         getOverdueTime(sessionEndIso) {
             const end = parseServerDate(sessionEndIso)
             if (!end) return null
-            const diffMs = Date.now() - end.getTime()
+            const diffMs = this.now - end.getTime()
             if (diffMs <= 0) return null
             return this.formatMs(diffMs)
         },
@@ -92,9 +105,8 @@ function kasa2App() {
 
         async init() {
             await this.fetchQueue()
-            // Re-assign every second so Alpine re-evaluates the live timers
-            // (getTimeDisplay / getOverdueTime), which aren't stored in reactive state.
-            setInterval(() => {this.queue = [...this.queue]}, 1000)
+
+            setInterval(() => {this.now = Date.now()}, 1000)
 
             createQueueWebSocket({
                 onOpen: () => {
@@ -103,7 +115,7 @@ function kasa2App() {
                 }, onMessage: () => {
                     clearTimeout(this.fetchTimer)
                     this.fetchTimer = setTimeout(() => { void this.fetchQueue() }, 500)
-                }, onClose: () => {this.wsConnected = false}
+                }, onClose: () => { this.wsConnected = false }
             })
         }
     }

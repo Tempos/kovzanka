@@ -1,26 +1,40 @@
 import os
+import secrets
 
-from fastapi import APIRouter, Response, Cookie, HTTPException
+from fastapi import APIRouter, Request, Response, Cookie, HTTPException, status
 
+from app.limiter import limiter
 from app.schemas import LoginRequest
 
 router = APIRouter()
-WORKER_PIN = os.getenv("WORKER_PIN", "1234")
+
+# In-memory active session store
+ACTIVE_SESSIONS = set()
+if not (WORKER_PIN := os.getenv("WORKER_PIN")):
+    raise RuntimeError("Missing required environment variable: WORKER_PIN")
 
 
 @router.post("/api/login")
-def login(data: LoginRequest, response: Response):
-    if data.pin == WORKER_PIN:
-        # Set a secure, HTTP-Only session cookie valid for the active work day
-        response.set_cookie(
-            key="worker_session",
-            value="authenticated_staff",
-            httponly=True,
-            samesite="lax",
-            max_age=36000
+@limiter.limit("5/minute")
+def login(data: LoginRequest, request: Request, response: Response):
+    if data.pin != WORKER_PIN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Невірний PIN"
         )
-        return {"status": "success"}
-    raise HTTPException(status_code=401, detail="Невірний пароль")
+
+    session_token = secrets.token_hex(32)
+    ACTIVE_SESSIONS.add(session_token)
+
+    response.set_cookie(
+        key="worker_session",
+        value=session_token,
+        httponly=True,
+        samesite="lax",
+        secure=True,
+        max_age=36000
+    )
+    return {"status": "success"}
 
 
 @router.post("/api/logout")
@@ -31,11 +45,12 @@ def logout(response: Response):
 
 def is_authenticated_worker(worker_session: str = Cookie(None)) -> bool:
     """Helper dependency to safely check if the active user is a worker"""
-    return worker_session == "authenticated_staff"
+    return worker_session in ACTIVE_SESSIONS
 
 
 def verify_worker(worker_session: str = Cookie(None)):
-    """Dependency check to wrap around Kasa 1 and Kasa 2 routes"""
-    if worker_session != "authenticated_staff":
-        raise HTTPException(status_code=403, detail="Доступ заборонено")
-    return True
+    if not is_authenticated_worker(worker_session):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Необхідна авторизація працівника"
+        )

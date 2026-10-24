@@ -1,12 +1,9 @@
-import os
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 
 # A baseline dictionary defining structural stock capacity overrides.
 # You can customize these pairs freely as your stock shifts.
-SKATE_INVENTORY_STOCK: Dict[int, int] = {
-    size: 10 for size in range(26, 49)
-}
+SKATE_INVENTORY_STOCK: Dict[int, int] = {size: 10 for size in range(26, 49)}
 
 
 # Example override if you ever need to adjust popular sizes later:
@@ -19,23 +16,22 @@ def calculate_live_inventory(active_items: List[Any]) -> Dict[int, Dict[str, Any
     """
     current_time = datetime.now(timezone.utc)
 
-    # Initialize the baseline dictionary tracking layout
-    inventory = {}
-    for size, total in SKATE_INVENTORY_STOCK.items():
-        inventory[size] = {
+    inventory = {
+        size: {
             "total": total,
             "in_use": 0,
             "available": total,
-            "next_available_in_mins": None
+            "next_available_in_mins": None,
         }
-
+        for size, total in SKATE_INVENTORY_STOCK.items()
+    }
     for item in active_items:
         # Safeguard array reading if it's stored as raw string lists or text
         sizes = item.shoe_sizes if isinstance(item.shoe_sizes, list) else []
 
         # Determine the time remaining until this individual session concludes
         if item.session_end:
-            # Ensure naive database datetimes are handled as UTC matching our clock
+            # Ensure naive database datetime are handled as UTC matching our clock
             end_time = item.session_end.replace(
                 tzinfo=timezone.utc) if item.session_end.tzinfo is None else item.session_end
             seconds_remaining = (end_time - current_time).total_seconds()
