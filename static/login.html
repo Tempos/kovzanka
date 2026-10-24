@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="uk" class="h-full bg-gray-950 selection:bg-yellow-500 selection:text-gray-950" xmlns:x-transition="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вхід — Ковзанка Staff</title>
+    <script defer src="/static/js/alpine.js"></script>
+    <script src="/static/js/tailwind.js"></script>
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/login.js"></script>
+</head>
+
+<body class="h-full flex items-center justify-center p-4 bg-gradient-to-br from-gray-950 via-gray-900 to-slate-900 relative overflow-hidden">
+
+<!-- Decorative background elements matching the display board grid visuals -->
+<div class="absolute inset-0 bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20 pointer-events-none"></div>
+
+<!-- Centralised Slate Login Block Card Box Container -->
+<div x-data="loginForm"
+     class="w-full max-w-md bg-gray-800/80 backdrop-blur-md border border-gray-700 rounded-2xl p-8 shadow-2xl relative z-10">
+
+    <!-- Header Section -->
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-yellow-400/10 border border-yellow-500/20 rounded-2xl text-3xl mb-4 shadow-inner animate-pulse">
+            ⛸
+        </div>
+        <h1 class="text-2xl font-black text-yellow-400 uppercase tracking-wider font-mono">
+            Ковзанка Staff
+        </h1>
+        <p class="text-xs text-gray-400 font-medium font-mono mt-1.5 uppercase tracking-wide">
+            Авторизація операційного терміналу
+        </p>
+    </div>
+
+    <!-- Form Inbound Handler Event Router Interceptor -->
+    <form @submit.prevent="submitLogin()" class="space-y-6">
+        <div class="space-y-2">
+            <div class="flex justify-between items-center px-1">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-widest font-mono">
+                    Введіть ПІН-код
+                </label>
+            </div>
+
+            <div class="relative">
+                <input type="password"
+                       inputmode="numeric"
+                       pattern="[0-9]*"
+                       maxlength="6"
+                       x-model="pin"
+                       placeholder="••••"
+                       autofocus
+                       class="w-full text-center tracking-[1em] text-3xl font-black bg-gray-950/90 border border-gray-700 rounded-xl p-4 text-yellow-300 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 placeholder-gray-800 font-mono transition-all duration-200 shadow-inner">
+            </div>
+        </div>
+
+        <!-- Error Notification Alert Box Banner Element -->
+        <div x-show="errorMessage"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             class="bg-red-950/40 border border-red-900/60 rounded-xl p-3.5 text-center text-xs text-red-400 font-mono font-semibold tracking-wide"
+             x-text="errorMessage"
+             x-cloak>
+        </div>
+
+        <!-- Execution Action Trigger Button -->
+        <button type="submit"
+                :disabled="!pin"
+                class="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-600 text-gray-950 font-black uppercase tracking-widest text-sm p-4 rounded-xl transition-all duration-150 shadow-lg cursor-pointer disabled:cursor-not-allowed select-none active:scale-[0.99] border-t border-yellow-300/20 disabled:border-none">
+            Підтвердити вхід
+        </button>
+    </form>
+</div>
+
+</body>
+</html>

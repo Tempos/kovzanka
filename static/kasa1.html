@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Каса 1 - Реєстрація</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="/static/js/alpine.js"></script>
+    <script src="/static/js/tailwind.js"></script>
+    <script src="/static/js/shared.js"></script>
     <script src="/static/js/kasa1.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style type="text/tailwindcss">
         @layer components {
             .card {@apply max-w-2xl mx-auto bg-white rounded-2xl shadow-xl p-8 border border-slate-200}
@@ -22,58 +23,72 @@
 <body class="bg-slate-100 min-h-screen p-6" x-data="kasa1()">
 <div class="card">
     <h1 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">📝 Каса 1: Реєстрація в чергу</h1>
-
     <form @submit.prevent="submitForm" class="space-y-6">
         <div> <!-- Телефон -->
             <label class="field-label">Номер телефону</label>
-            <input @input="formatPhone" class="text-input font-mono text-xl font-medium tracking-wide" placeholder="+380 63 111 11 11" required
-                   type="tel"
-                   x-model="formattedPhone">
+            <input @input="formatPhone" class="text-input font-mono text-xl font-medium tracking-wide" placeholder="+380 63 111 11 11" required type="tel" x-model="formattedPhone">
             <p class="text-xs text-slate-400 mt-1">Просто вводьте цифри номера (наприклад, 0631111111)</p>
         </div>
 
         <div> <!-- Вибір розмірів -->
             <div class="flex justify-between items-center mb-2">
                 <label class="field-label mb-0">Оберіть розміри ковзанів</label>
-                <button @click="clearSizes()" class="text-xs text-red-500 hover:underline" type="button"
-                        x-show="shoeSizes.length > 0">
-                    Очистити вибір
+                <!-- Button to open modal -->
+                <button @click="showInventoryModal = true; fetchInventory()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition">
+                    📊 Inventory
                 </button>
             </div>
-            <div class="grid grid-cols-6 sm:grid-cols-8 gap-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <template :key="size" x-for="size in availableSizes">
-                    <button :class="getSizeCount(size) > 0 ? 'size-btn-active' : 'size-btn-idle'" @click="addSize(size)"
-                            class="size-btn"
-                            type="button">
-                        <span x-text="size"></span>
-                        <span class="absolute -top-2 -right-2 bg-amber-500 text-slate-950 text-xs font-black w-5 h-5 rounded-full flex items-center justify-center border border-white" x-show="getSizeCount(size) > 0"
-                              x-text="getSizeCount(size)">
-                        </span>
-                    </button>
-                </template>
+            <div class="flex justify-between items-center mb-2">
+                <div class="text-[11px] text-slate-400 font-mono">💡 ЛКМ: додати пару • ПКМ: видалити пару</div>
+                <button @click="clearSizes()" class="text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100
+                border border-red-200 px-2 py-0.5 rounded transition" type="button" x-show="shoeSizes.length > 0">
+                    ✕ Очистити вибір
+                </button>
             </div>
-            <div class="mt-3 min-h-[48px] flex flex-wrap items-center gap-2 p-3 bg-slate-100 rounded-xl border border-slate-200">
-                <span class="text-xs text-slate-400 font-semibold mr-1" x-show="shoeSizes.length === 0">
-                    Обирайте розміри кліком по кнопках вище
-                </span>
-                <template :key="index" x-for="(size, index) in shoeSizes">
-                    <span class="chip">
-                        <span x-text="'Р-р ' + size"></span>
-                        <button @click="removeSizeAtIndex(index)" class="text-blue-600 hover:text-red-600 font-bold"
-                                type="button">&times;</button>
-                    </span>
+
+            <!-- Сітка кнопок -->
+            <div class="grid grid-cols-6 sm:grid-cols-8 gap-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <template x-for="(data, size) in inventory" :key="size">
+                    <button type="button" @click="addSize(Number(size))" @contextmenu.prevent="removeSize(Number(size))"
+                            :class="getSizeCount(Number(size)) > 0 ? 'size-btn-active'
+                                : (data.available > 0 ? 'size-btn-idle' : 'bg-red-50 text-red-900 border-red-200/60 hover:bg-red-100/50')"
+                            class="size-btn relative flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition select-none cursor-pointer min-w-0">
+
+                        <!-- Номер розміру -->
+                        <span class="text-lg font-black tracking-tight font-mono" x-text="size"></span>
+
+                        <!-- Живий індикатор залишку з урахуванням кліків на касі -->
+                        <span class="text-[10px] font-bold mt-0.5 tracking-tighter"
+                              :class="getSizeCount(Number(size)) > 0 ? 'text-blue-100' : (data.available > 0 ? 'text-slate-400' : 'text-red-500 font-extrabold')"
+                              x-text="Math.max(0, data.available - getSizeCount(Number(size))) + ' / ' + data.total">
+                        </span>
+
+                        <!-- Помаранчевий круглий лічильник кількості обраних пар -->
+                        <span class="absolute -top-2 -right-2 bg-amber-500 text-slate-950 text-xs font-black w-5 h-5 rounded-full flex items-center justify-center border border-white"
+                              x-show="getSizeCount(Number(size)) > 0" x-text="getSizeCount(Number(size))">
+                        </span>
+
+                        <!-- Індикатор часу повернення (якщо 0 на складі) -->
+                        <template x-if="data.available === 0 && data.next_available_in_mins !== null">
+                            <span class="absolute -bottom-1.5 bg-yellow-500 text-gray-950 font-mono text-[9px] font-black px-1 rounded shadow animate-pulse"
+                                  x-text="'~' + data.next_available_in_mins + 'м'">
+                            </span>
+                        </template>
+                    </button>
                 </template>
             </div>
         </div>
 
-        <div> <!-- Тривалість сеансу -->
-            <label class="field-label">Тривалість катання</label>
-            <div class="grid grid-cols-5 gap-2">
-                <template :key="dur" x-for="dur in availableDurations">
-                    <button :class="durationMinutes === dur ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'" @click="durationMinutes = dur"
-                            class="py-2 rounded-xl font-bold text-sm border transition"
-                            type="button">
-                        <span x-text="dur + ' хв'"></span>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Тривалість сеансу (хв)</label>
+            <div class="flex gap-2">
+                <template x-for="d in availableDurations" :key="d">
+                    <button
+                            type="button"
+                            @click="durationMinutes = d"
+                            :class="durationMinutes === d ? 'bg-blue-600 text-white font-semibold shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                            class="flex-1 py-2 px-2 rounded border text-sm transition text-center"
+                            x-text="d + ' хв'">
                     </button>
                 </template>
             </div>
@@ -81,15 +96,13 @@
 
         <div> <!-- Коментар -->
             <label class="field-label">Коментар (Опціонально)</label>
-            <input class="text-input" placeholder="напр., Сім'я з дітьми, День народження" type="text"
-                   x-model="comment">
+            <input class="text-input" placeholder="напр., Сім'я з дітьми, День народження" type="text" x-model="comment">
         </div>
 
         <!-- Кнопка підтвердження -->
-        <button :disabled="!canSubmit" class="w-full bg-blue-600 disabled:bg-slate-300 text-white py-3.5 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg disabled:shadow-none"
-                type="submit">
-            Зареєструвати в чергу (<span x-text="shoeSizes.length"></span> чол., <span x-text="durationMinutes"></span>
-            хв)
+        <button :disabled="!canSubmit" type="submit"
+                class="w-full bg-blue-600 disabled:bg-slate-300 text-white py-3.5 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg disabled:shadow-none">
+            Зареєструвати в чергу (<span x-text="shoeSizes.length"></span> чол., <span x-text="durationMinutes"></span>хв)
         </button>
     </form>
 
@@ -102,13 +115,63 @@
                 Сеанс: <span class="font-bold text-blue-600" x-text="createdTicket.duration_minutes + ' хв'"></span> |
                 Розміри: <span class="font-bold" x-text="createdTicket.shoe_sizes.join(', ')"></span>
             </div>
-            <p class="text-xs text-slate-400">
-                Лінк статусу:
-                <a :href="statusLink(createdTicket)" class="underline text-blue-600 font-mono" target="_blank"
-                   x-text="statusLink(createdTicket)"></a>
+            <p class="text-xs text-slate-400">Лінк статусу:
+                <a :href="statusLink(createdTicket)" class="underline text-blue-600 font-mono"
+                   target="_blank" x-text="statusLink(createdTicket)"></a>
             </p>
         </div>
     </template>
+</div>
+<!-- Inventory Modal Popup -->
+<div x-show="showInventoryModal"
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+     style="display: none;"
+     @click.self="showInventoryModal = false"
+     @keydown.escape.window="showInventoryModal = false">
+
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 overflow-hidden">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
+            <h2 class="text-xl font-bold text-gray-800">Inventory</h2>
+            <button @click="showInventoryModal = false" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+        </div>
+
+        <!-- Inventory Table -->
+        <div class="overflow-x-auto max-h-[60vh]">
+            <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
+                <thead>
+                <tr class="bg-gray-50 text-gray-600 uppercase text-xs font-medium tracking-wider">
+                    <th class="py-3 px-4">Розмір</th>
+                    <th class="py-3 px-4 text-center">Всього</th>
+                    <th class="py-3 px-4 text-center">На руках</th>
+                    <th class="py-3 px-4 text-center">Вільні</th>
+                    <th class="py-3 px-4 text-center">У черзі</th>
+                    <th class="py-3 px-4 text-right">Орієнт. очікування</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                <template x-for="(data, size) in inventory" :key="size">
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="py-3 px-4 font-bold text-gray-900" x-text="size"></td>
+                        <td class="py-3 px-4 text-center text-gray-700" x-text="data.total"></td>
+                        <td class="py-3 px-4 text-center text-blue-600 font-semibold" x-text="data.in_use"></td>
+                        <td class="py-3 px-4 text-center">
+                                <span :class="data.available > 0 ? 'text-green-600 font-bold' : 'text-red-500 font-bold'"
+                                      x-text="data.available"></span>
+                        </td>
+                        <td class="py-3 px-4 text-center text-amber-600 font-semibold" x-text="data.in_queue || 0"></td>
+                        <td class="py-3 px-4 text-right text-gray-500" x-text="data.next_available_in_mins ? data.next_available_in_mins + ' хв' : '—'"></td>
+                    </tr>
+                </template>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+            <button @click="showInventoryModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg text-sm transition">
+                Закрити
+            </button>
+        </div>
+    </div>
 </div>
 </body>
 </html>
