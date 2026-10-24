@@ -107,6 +107,7 @@ function kasa2App() {
             await this.fetchQueue()
 
             setInterval(() => {this.now = Date.now()}, 1000)
+            setInterval(() => {if (!document.hidden) {void this.fetchQueue()}}, 3000)
 
             createQueueWebSocket({
                 onOpen: () => {
