@@ -2,6 +2,10 @@ const LOCAL_PHONE_DIGITS = 9
 
 function kasa1() {
     return {
+        ...inventoryMixin(),
+        ...queueMixin(),
+        ...wsSyncMixin(),
+
         formattedPhone: "+380 ",
         rawDigits: "",
         shoeSizes: [],
@@ -30,7 +34,7 @@ function kasa1() {
                         this.inventory = data
                         this.inventoryError = false // Clear error on success
                     }
-                // Mark error on bad response
+                    // Mark error on bad response
                 } else if (requestId === this.inventoryRequestId) {this.inventoryError = true}
             } catch (e) {
                 console.error("Помилка оновлення залишків ковзанів:", e)
@@ -41,14 +45,6 @@ function kasa1() {
         async retryInventory() {
             this.inventoryError = false
             await this.fetchInventory()
-        },
-
-        // --- УПРАВЛІННЯ ЧЕРГОЮ ---
-        async fetchQueue() {
-            try {
-                const res = await fetch("/api/queue")
-                if (res.ok) { this.queue = await res.json() }
-            } catch (e) { console.error("Помилка завантаження черги:", e) }
         },
 
         // --- МЕТОДИ КЕРУВАННЯ РОЗМІРАМИ (ПКМ / ЛКМ) ---
@@ -116,13 +112,9 @@ function kasa1() {
         },
 
         async init() {
-            await Promise.all([this.fetchQueue(), this.fetchInventory()])
-            createQueueWebSocket({
-                onOpen: () => { this.wsConnected = true }, onMessage: () => {
-                    void this.fetchQueue()
-                    void this.fetchInventory()
-                }, onClose: () => { this.wsConnected = false }
-            })
+            this.initInventory()
+            if (typeof this.fetchQueue === "function") await this.fetchQueue()
+            this.initWebSocket()
         }
     }
 }

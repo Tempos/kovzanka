@@ -106,24 +106,50 @@
                         </span>
                     </td>
 
-                    <!--BUTTONS-->
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button @click="changeStatus(item.id, 'ВИКЛИКАЄТЬСЯ')"
-                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs transition">Викликати
-                        </button>
-                        <button @click="changeStatus(item.id, 'ОБСЛУГОВУЄТЬСЯ')"
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition">Видати
-                        </button>
-                        <button @click="extendSession(item.id, 15)"
-                                class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2 py-1 rounded text-xs transition"
-                                x-show="item.status === 'ОБСЛУГОВУЄТЬСЯ'">+15 хв
-                        </button>
-                        <button @click="changeStatus(item.id, 'ПОВЕРНЕНО')"
-                                class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition">Прийняти
-                        </button>
-                        <button @click="changeStatus(item.id, 'СКАСОВАНО')"
-                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition">Скасувати
-                        </button>
+                    <!-- BUTTONS -->
+                    <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div class="inline-flex items-center justify-end gap-1.5">
+
+                            <!-- Якщо чекає -->
+                            <template x-if="item.status === 'ЧЕКАЄ'">
+                                <button @click="changeStatus(item.id, 'ВИКЛИКАЄТЬСЯ')"
+                                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-bold transition">
+                                    Викликати
+                                </button>
+                            </template>
+
+                            <!-- Якщо викликаний -->
+                            <template x-if="item.status === 'ВИКЛИКАЄТЬСЯ'">
+                                <button @click="changeStatus(item.id, 'ОБСЛУГОВУЄТЬСЯ')"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold transition">
+                                    Видати ковзани
+                                </button>
+                            </template>
+
+                            <!-- Якщо катається -->
+                            <template x-if="item.status === 'ОБСЛУГОВУЄТЬСЯ'">
+                                <div class="inline-flex gap-1">
+                                    <button @click="extendSession(item.id, 15)"
+                                            class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2 py-1 rounded text-xs transition">
+                                        +15 хв
+                                    </button>
+                                    <button @click="changeStatus(item.id, 'ПОВЕРНЕНО')"
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs font-bold transition">
+                                        Прийняти
+                                    </button>
+                                </div>
+                            </template>
+
+                            <!-- Завжди доступне скасування для активних -->
+                            <template x-if="item.status !== 'ПОВЕРНЕНО' && item.status !== 'СКАСОВАНО'">
+                                <button @click="changeStatus(item.id, 'СКАСОВАНО')"
+                                        class="bg-gray-200 hover:bg-red-600 hover:text-white text-gray-700 px-2 py-1 rounded text-xs transition"
+                                        title="Скасувати">
+                                    ✕
+                                </button>
+                            </template>
+
+                        </div>
                     </td>
                 </tr>
             </template>
@@ -136,56 +162,6 @@
 </div>
 
 <!-- Inventory Modal Popup -->
-<div x-show="showInventoryModal"
-     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-     style="display: none;"
-     @click.self="showInventoryModal = false"
-     @keydown.escape.window="showInventoryModal = false">
-
-    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 overflow-hidden">
-        <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-800">Inventory</h2>
-            <button @click="showInventoryModal = false" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
-        </div>
-
-        <!-- Inventory Table -->
-        <div class="overflow-x-auto max-h-[60vh]">
-            <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
-                <thead>
-                <tr class="bg-gray-50 text-gray-600 uppercase text-xs font-medium tracking-wider">
-                    <th class="py-3 px-4">Розмір</th>
-                    <th class="py-3 px-4 text-center">Всього</th>
-                    <th class="py-3 px-4 text-center">На руках</th>
-                    <th class="py-3 px-4 text-center">Вільні</th>
-                    <th class="py-3 px-4 text-center">У черзі</th>
-                    <th class="py-3 px-4 text-right">Орієнт. очікування</th>
-                </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 bg-white">
-                <template x-for="(data, size) in inventory" :key="size">
-                    <tr class="hover:bg-gray-50 transition">
-                        <td class="py-3 px-4 font-bold text-gray-900" x-text="size"></td>
-                        <td class="py-3 px-4 text-center text-gray-700" x-text="data.total"></td>
-                        <td class="py-3 px-4 text-center text-blue-600 font-semibold" x-text="data.in_use"></td>
-                        <td class="py-3 px-4 text-center">
-                                    <span :class="data.available > 0 ? 'text-green-600 font-bold' : 'text-red-500 font-bold'"
-                                          x-text="data.available"></span>
-                        </td>
-                        <td class="py-3 px-4 text-center text-amber-600 font-semibold" x-text="data.in_queue || 0"></td>
-                        <td class="py-3 px-4 text-right text-gray-500" x-text="data.next_available_in_mins ? data.next_available_in_mins + ' хв' : '—'"></td>
-                    </tr>
-                </template>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mt-6 flex justify-end">
-            <button @click="showInventoryModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg text-sm transition">
-                Закрити
-            </button>
-        </div>
-    </div>
-</div>
-</div>
+{% include "inventory_modal.html" %}
 </body>
 </html>

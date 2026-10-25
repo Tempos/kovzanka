@@ -44,7 +44,7 @@
                         <span :class="data.available > 0 ? 'text-green-600 font-bold' : 'text-red-500 font-bold'" x-text="data.available"></span>
                     </td>
                     <td class="py-3 px-4 text-center text-amber-600 font-semibold" x-text="data.in_queue || 0"></td>
-                    <td class="py-3 px-4 text-right text-gray-500" x-text="data.next_available_in_mins ? data.next_available_in_mins + ' хв' : '—'"></td>
+                    <td class="py-3 px-4 text-right text-gray-500 font-mono" x-text="formatCountdown(data.target_timestamp, now)"></td>
                 </tr>
             </template>
             </tbody>

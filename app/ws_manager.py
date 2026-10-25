@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 
 
 class ConnectionManager:
@@ -20,7 +20,7 @@ class ConnectionManager:
         for connection in self.active_connections[:]:
             try:
                 await connection.send_text(message)
-            except Exception:
+            except (WebSocketDisconnect, ConnectionError, RuntimeError, OSError):
                 self.disconnect(connection)
 
 

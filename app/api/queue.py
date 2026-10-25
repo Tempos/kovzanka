@@ -17,8 +17,14 @@ router = APIRouter(prefix="/api", tags=["Queue API"])
 
 @router.get("/inventory", dependencies=[Depends(verify_worker)])
 def get_inventory_status(db: Session = Depends(get_db)):
-    """Exposes current counts to cashiers. Looks for active ice skaters (SERVED)."""
-    active_skaters = db.query(QueueItem).filter(QueueItem.status == QueueStatus.SERVED).all()
+    """Exposes current counts to cashiers for inventory tracking."""
+    active_skaters = db.query(QueueItem).filter(
+        QueueItem.status.in_([
+            QueueStatus.WAITING,
+            QueueStatus.CALLING,
+            QueueStatus.SERVED
+        ])
+    ).all()
     return calculate_live_inventory(active_skaters)
 
 

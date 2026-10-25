@@ -2,7 +2,7 @@
 function formatPhone(phone) {
     if (!phone) return "—"
     let cleaned = ("" + phone).replace(/\D/g, "")
-    if (cleaned.length === 12 && cleaned.startsWith("380")) {cleaned = cleaned.substring(2)}
+    if (cleaned.length === 12 && cleaned.startsWith("380")) { cleaned = cleaned.substring(2) }
     const match = cleaned.match(/^(\d{3})(\d{3})(\d{2})(\d{2})$/)
     return match ? `${match[1]} ${match[2]} ${match[3]} ${match[4]}` : phone
 }
@@ -13,15 +13,7 @@ function formatTime(isoString) {
     return date.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", hour12: false})
 }
 
-// Parses a server timestamp into a Date, unambiguously.
-// The backend stores naive timestamps with NO timezone marker
-// (e.g. "2026-09-18 20:11:55.800391"), but those values are UTC
-// (Python's datetime.utcnow()-style naive UTC), not local time.
-// If a string already carries an explicit timezone (Z or +hh:mm), trust it.
-// Otherwise, parse the components explicitly as UTC — never let the
-// browser's ambiguous/local-time guessing shift the instant by our
-// UTC offset (this was the source of the "already 90 min overdue
-// right after starting" bug).
+// Parses a server timestamp into a Date, unambiguously (UTC naive format handler).
 function parseServerDate(isoString) {
     if (!isoString) return null
     if (/[Zz]|[+-]\d{2}:?\d{2}$/.test(isoString)) {
@@ -45,24 +37,21 @@ function createQueueWebSocket({onMessage, onOpen, onClose}) {
     let socket = null
 
     const connect = () => {
-        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {return}
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) { return }
 
         const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:"
         const wsUrl = `${wsProtocol}//${window.location.host}/api/ws/queue`
         socket = new WebSocket(wsUrl)
 
-        socket.onopen = () => {if (onOpen) onOpen()}
-
+        socket.onopen = () => { if (onOpen) onOpen() }
         socket.onmessage = (event) => {
             if (event.data === "ping") return
             if (onMessage) onMessage(event)
         }
-
         socket.onerror = (error) => console.error("WebSocket error:", error)
-
         socket.onclose = () => {
             if (onClose) onClose()
-            setTimeout(connect, 2000) // Auto-reconnect
+            setTimeout(connect, 2000)
         }
     }
 
@@ -70,17 +59,10 @@ function createQueueWebSocket({onMessage, onOpen, onClose}) {
     return {get instance() { return socket }}
 }
 
-// Compact size summary for the display board: groups duplicate sizes with a
-// ×count instead of repeating them, and packs as many groups as fit on one
-// line (by character budget, not a flat group count) before folding the rest
-// into a "+N" tail. maxChars=21 was calibrated against the actual card width
-// in display.html (grid-cols-3 card at text-xs, ui-monospace) - see the
-// "Розмір(и): " label shares the line with this text, so budget is tight.
+// Compact size summary for display boards and modals
 function formatSizesSummary(sizes, maxChars = 21) {
-    // If the backend sends it as a raw JSON string text, parse it into an array immediately
-    if (typeof sizes === 'string') {
-        try {sizes = JSON.parse(sizes);}
-        catch (e) {sizes = sizes ? [sizes] : [];}
+    if (typeof sizes === "string") {
+        try {sizes = JSON.parse(sizes)} catch (e) {sizes = sizes ? [sizes] : []}
     }
 
     if (!sizes || sizes.length === 0) return "—"
@@ -108,4 +90,74 @@ function formatSizesSummary(sizes, maxChars = 21) {
     }
 
     return parts.join(", ")
+}
+
+// --- MIXINS ---
+
+function inventoryMixin() {
+    return {
+        inventory: {},
+        showInventoryModal: false,
+        inventoryNow: Math.floor(Date.now() / 1000),
+
+        initInventory() {
+            void this.fetchInventory()
+            setInterval(() => { this.inventoryNow = Math.floor(Date.now() / 1000) }, 1000)
+            setInterval(() => { if (!document.hidden) { void this.fetchInventory() } }, 5000)
+        },
+
+        async fetchInventory() {
+            try {
+                const res = await fetch("/api/inventory")
+                if (res.ok) { this.inventory = await res.json() }
+            } catch (e) { console.error("Помилка завантаження залишків:", e) }
+        },
+
+        formatCountdown(targetTimestamp) {
+            if (!targetTimestamp) return "—"
+            const diff = targetTimestamp - this.inventoryNow
+            if (diff <= 0) return "0 с"
+
+            const mins = Math.floor(diff / 60)
+            const secs = diff % 60
+            return mins > 0 ? `${mins} хв ${String(secs).padStart(2, "0")} с` : `${secs} с`
+        }
+    }
+}
+
+function queueMixin() {
+    return {
+        queue: [],
+        async fetchQueue() {
+            try {
+                const res = await fetch("/api/queue")
+                if (res.ok) { this.queue = await res.json() }
+            } catch (e) { console.error("Помилка завантаження черги:", e) }
+        }
+    }
+}
+
+function wsSyncMixin() {
+    return {
+        wsConnected: false,
+        socket: null,
+
+        get wsStatus() { return getWsStatus(this.wsConnected) },
+
+        initWebSocket() {
+            const wsWrapper = createQueueWebSocket({
+                onOpen: () => {
+                    this.wsConnected = true
+                    if (typeof this.fetchQueue === "function") void this.fetchQueue()
+                    if (typeof this.fetchInventory === "function") void this.fetchInventory()
+                },
+                onMessage: () => {
+                    if (typeof this.fetchQueue === "function") void this.fetchQueue()
+                    if (typeof this.fetchInventory === "function") void this.fetchInventory()
+                },
+                onClose: () => { this.wsConnected = false }
+            })
+            this.socket = wsWrapper.instance
+        }
+    }
 }
