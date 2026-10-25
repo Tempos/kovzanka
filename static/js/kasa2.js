@@ -103,6 +103,7 @@ function kasa2App() {
         async init() {
             this.initInventory()
             if (typeof this.fetchQueue === "function") await this.fetchQueue()
+            setInterval(() => { this.now = Date.now() }, 1000)
             this.initWebSocket()
         }
     }

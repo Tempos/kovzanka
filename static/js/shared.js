@@ -146,7 +146,11 @@ function wsSyncMixin() {
 
         initWebSocket() {
             const wsWrapper = createQueueWebSocket({
-                onOpen: () => { this.wsConnected = true },
+                onOpen: () => {
+                    this.wsConnected = true
+                    if (typeof this.fetchQueue === "function") void this.fetchQueue()
+                    if (typeof this.fetchInventory === "function") void this.fetchInventory()
+                },
                 onMessage: () => {
                     if (typeof this.fetchQueue === "function") void this.fetchQueue()
                     if (typeof this.fetchInventory === "function") void this.fetchInventory()

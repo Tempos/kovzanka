@@ -15,11 +15,11 @@ def calculate_live_inventory(active_items: List[Any]) -> Dict[int, Dict[str, Any
             "in_queue": 0,
             "available": total,
             "target_timestamp": None,
+            "next_available_in_mins": None,
         }
         for size, total in SKATE_INVENTORY_STOCK.items()
     }
 
-    # 1. Count items waiting or being called in the queue (visibility only)
     for item in active_items:
         status_val = item.status.value if hasattr(item.status, "value") else str(item.status)
         if status_val in ("ЧЕКАЄ", "WAITING", "PENDING", "ВИКЛИКАЄТЬСЯ", "CALLING", "QueueStatus.WAITING", "QueueStatus.CALLING"):
@@ -31,8 +31,7 @@ def calculate_live_inventory(active_items: List[Any]) -> Dict[int, Dict[str, Any
                 if size_int in inventory:
                     inventory[size_int]["in_queue"] += 1
 
-    # 2. Track the earliest session end time per size for deficit queue situations
-    size_earliest_end: Dict[int, datetime] = {}
+    size_end_times: Dict[int, List[datetime]] = {}
 
     for item in active_items:
         status_val = item.status.value if hasattr(item.status, "value") else str(item.status)
@@ -55,18 +54,22 @@ def calculate_live_inventory(active_items: List[Any]) -> Dict[int, Dict[str, Any
             if size_int in inventory:
                 inv = inventory[size_int]
                 inv["in_use"] += 1
+                if size_int not in size_end_times:
+                    size_end_times[size_int] = []
+                size_end_times[size_int].append(end_time)
 
-                current_avail = inv["total"] - inv["in_use"]
-                if (current_avail < 0 or inv["in_queue"] > current_avail) and (size_int not in size_earliest_end or end_time < size_earliest_end[size_int]):
-                    size_earliest_end[size_int] = end_time
-
-    # 3. Calculate final available stock and set target_timestamp
     for size_int, inv in inventory.items():
         inv["available"] = max(0, inv["total"] - inv["in_use"])
+        deficit = inv["in_queue"] - inv["available"]
 
-        if inv["in_queue"] > inv["available"] and size_int in size_earliest_end:
-            inv["target_timestamp"] = int(size_earliest_end[size_int].timestamp())
+        if deficit > 0 and size_int in size_end_times:
+            sorted_ends = sorted(size_end_times[size_int])
+            target_dt = sorted_ends[deficit - 1] if deficit <= len(sorted_ends) else sorted_ends[-1]
+            inv["target_timestamp"] = int(target_dt.timestamp())
+            diff_mins = max(1, int((target_dt - current_time).total_seconds() / 60))
+            inv["next_available_in_mins"] = diff_mins
         else:
             inv["target_timestamp"] = None
+            inv["next_available_in_mins"] = None
 
     return inventory

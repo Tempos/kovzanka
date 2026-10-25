@@ -20,7 +20,7 @@ class ConnectionManager:
         for connection in self.active_connections[:]:
             try:
                 await connection.send_text(message)
-            except (WebSocketDisconnect, ConnectionError, RuntimeError):
+            except (WebSocketDisconnect, ConnectionError, RuntimeError, OSError):
                 self.disconnect(connection)
 
 
