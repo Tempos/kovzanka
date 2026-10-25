@@ -4,9 +4,6 @@ function kasa2App() {
         ...queueMixin(),
         ...wsSyncMixin(),
 
-        queue: [],
-        wsConnected: false,
-        socket: null,
         showInventoryModal: false,
         inventory: {},
         fetchTimer: null,
@@ -27,13 +24,16 @@ function kasa2App() {
 
         async changeStatus(itemId, newStatus) {
             const item = this.queue.find(i => i.id === itemId)
-            if (item) item.status = newStatus
+            if (!item) return
+
+            const currentStatus = item.status
+            item.status = newStatus // Optimistic UI update
 
             try {
-                const response = await fetch(`/api/queue/${itemId}/status?status=${encodeURIComponent(newStatus)}`, {
-                    method: "PATCH", headers: {"Content-Type": "application/json"}
-                })
-                if (!response.ok) await this.fetchQueue()
+                const response = await fetch(
+                    `/api/queue/${itemId}/status?status=${encodeURIComponent(newStatus)}&expected_status=${encodeURIComponent(currentStatus)}`,
+                    {method: "PATCH", headers: {"Content-Type": "application/json"}})
+                if (!response.ok) {await this.fetchQueue()}
             } catch (e) {
                 console.error("Помилка зміни статусу:", e)
                 await this.fetchQueue()
