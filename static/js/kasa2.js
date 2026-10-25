@@ -1,5 +1,9 @@
 function kasa2App() {
     return {
+        ...inventoryMixin(),
+        ...queueMixin(),
+        ...wsSyncMixin(),
+
         queue: [],
         wsConnected: false,
         socket: null,
@@ -19,13 +23,6 @@ function kasa2App() {
         },
 
         // --- API ACTIONS ---
-        async fetchQueue() {
-            try {
-                const response = await fetch("/api/queue")
-                if (response.ok) { this.queue = await response.json() }
-            } catch (e) { console.error("Помилка завантаження черги:", e) }
-        },
-
         get wsStatus() { return getWsStatus(this.wsConnected) },
 
         async changeStatus(itemId, newStatus) {
@@ -104,20 +101,9 @@ function kasa2App() {
         },
 
         async init() {
-            await this.fetchQueue()
-
-            setInterval(() => {this.now = Date.now()}, 1000)
-            setInterval(() => {if (!document.hidden) {void this.fetchQueue()}}, 3000)
-
-            createQueueWebSocket({
-                onOpen: () => {
-                    this.wsConnected = true
-                    void this.fetchQueue()
-                }, onMessage: () => {
-                    clearTimeout(this.fetchTimer)
-                    this.fetchTimer = setTimeout(() => { void this.fetchQueue() }, 500)
-                }, onClose: () => { this.wsConnected = false }
-            })
+            this.initInventory()
+            if (typeof this.fetchQueue === "function") await this.fetchQueue()
+            this.initWebSocket()
         }
     }
 }

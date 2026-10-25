@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Табло черги - Ковзанка</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="/static/js/alpine.js"></script>
+    <script src="/static/js/tailwind.js"></script>
     <script src="/static/js/shared.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen p-6 font-sans" x-data="displayApp()">
 <div class="max-w-7xl mx-auto">
@@ -66,35 +66,18 @@
 <script>
     function displayApp() {
         return {
-            callingItems: [],
-            waitingItems: [],
-            wsConnected: false,
-            socket: null,
+            ...queueMixin(),
+            ...wsSyncMixin(),
 
-            async fetchQueue() {
-                try {
-                    const response = await fetch("/api/queue")
-                    if (response.ok) {
-                        const data = await response.json()
-                        this.callingItems = data.filter(item => item.status === "ВИКЛИКАЄТЬСЯ")
-                        this.waitingItems = data.filter(item => item.status === "ЧЕКАЄ").slice(0, 12)
-                    }
-                } catch (e) {console.error("Помилка завантаження черги:", e)}
-            },
+            get callingItems() { return this.queue.filter(item => item.status === "ВИКЛИКАЄТЬСЯ") },
+            get waitingItems() { return this.queue.filter(item => item.status === "ЧЕКАЄ").slice(0, 12) },
 
             get wsStatus() { return getWsStatus(this.wsConnected) },
 
             init() {
                 this.fetchQueue()
                 setInterval(() => {this.fetchQueue()}, 3000)
-                createQueueWebSocket({
-                    onOpen: () => {
-                        this.wsConnected = true
-                        this.fetchQueue()
-                    },
-                    onMessage: () => this.fetchQueue(),
-                    onClose: () => { this.wsConnected = false }
-                })
+                this.initWebSocket()
             }
         }
     }
