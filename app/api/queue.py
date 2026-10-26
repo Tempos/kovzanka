@@ -12,7 +12,7 @@ from app.models import QueueItem, QueueStatus
 from app.schemas import CreateQueueRequest, UserStatusResponse, QueueItemResponse, ExtendSessionRequest
 from app.ws_manager import manager
 
-router = APIRouter(prefix="/api", tags=["Queue API"])
+router = APIRouter(prefix="/api", tags=["API Endpoints"])
 
 
 @router.get("/inventory", dependencies=[Depends(verify_worker)])
@@ -40,8 +40,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @router.get("/queue", response_model=List[QueueItemResponse])
 def get_full_queue(db: DBSession):
-    # Повертаємо тільки ті талони, які ще в процесі
-    return (
+    return (  # Повертаємо тільки ті талони, які ще в процесі
         db.query(QueueItem)
         .filter(QueueItem.status.in_([
             QueueStatus.WAITING,
@@ -113,13 +112,7 @@ async def extend_session(item_id: int, payload: ExtendSessionRequest, db: Sessio
 
 @router.get("/public/status/{tracking_token}", response_model=UserStatusResponse)
 def get_user_status(tracking_token: str, db: DBSession):
-    item = (
-        db.query(QueueItem)
-        .filter(QueueItem.tracking_token == tracking_token)
-        .first()
-    )
-
-    if not item:
+    if not (item := db.query(QueueItem).filter(QueueItem.tracking_token == tracking_token).first()):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
 
     position = (
@@ -140,23 +133,14 @@ def get_user_status(tracking_token: str, db: DBSession):
 
 @router.get("/public/status/ticket/{ticket}", response_model=UserStatusResponse)
 def get_user_status_by_ticket(ticket: int, db: DBSession):
-    item = (
-        db.query(QueueItem)
-        .filter(QueueItem.ticket_number == ticket)
-        .first()
-    )
-
-    if not item:
+    if not (item:= (db.query(QueueItem).filter(QueueItem.ticket_number == ticket).first())):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
 
     position = 0
     if item.status == QueueStatus.WAITING:
         position = (
             db.query(QueueItem)
-            .filter(
-                QueueItem.status == QueueStatus.WAITING,
-                QueueItem.id < item.id
-            )
+            .filter(QueueItem.status == QueueStatus.WAITING, QueueItem.id < item.id)
             .count()
         )
 

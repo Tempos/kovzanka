@@ -11,7 +11,7 @@ document.addEventListener("alpine:init", () => {
                     body: JSON.stringify({pin: this.pin})
                 })
 
-                if (res.ok) {window.location.href = new URLSearchParams(window.location.search).get("next") || "/kasa1"
+                if (res.ok) {window.location.href = new URLSearchParams(window.location.search).get("next") || "/"
                 } else {
                     const errData = await res.json()
                     this.errorMessage = errData.detail || "Невірний ПІН-код"

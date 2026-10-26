@@ -13,20 +13,6 @@ def read_root():
     return FileResponse("static/index.html")
 
 
-@router.get("/kasa1")
-def kasa1_page(request: Request, worker_session: str = Cookie(None)):
-    if not is_authenticated_worker(worker_session):
-        return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse(request, "kasa1.html")
-
-
-@router.get("/kasa2")
-def kasa2_page(request: Request, worker_session: str = Cookie(None)):
-    if not is_authenticated_worker(worker_session):
-        return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse(request, "kasa2.html")
-
-
 @router.get("/display")
 def display_page():
     return FileResponse("static/display.html")
@@ -37,6 +23,20 @@ def inventory_page(request: Request, worker_session: str = Cookie(None)):
     if not is_authenticated_worker(worker_session):
         return RedirectResponse(url="/login?next=/inventory", status_code=303)
     return FileResponse("static/inventory.html")
+
+
+@router.get("/kasa1")
+def kasa1_page(request: Request, worker_session: str = Cookie(None)):
+    if not is_authenticated_worker(worker_session):
+        return RedirectResponse(url="/login?next=/kasa1", status_code=303)
+    return templates.TemplateResponse(request, "kasa1.html")
+
+
+@router.get("/kasa2")
+def kasa2_page(request: Request, worker_session: str = Cookie(None)):
+    if not is_authenticated_worker(worker_session):
+        return RedirectResponse(url="/login?next=/kasa2", status_code=303)
+    return templates.TemplateResponse(request, "kasa2.html")
 
 
 @router.get("/status")
