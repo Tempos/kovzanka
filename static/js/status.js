@@ -9,6 +9,11 @@ function statusApp() {
             }
         },
 
+        loadTicket(num) {
+            if (num < 1) return
+            window.location.search = `?ticket=${num}`
+        },
+
         resetTicket() {
             if (this.pollInterval) clearInterval(this.pollInterval)
             window.location.href = window.location.pathname

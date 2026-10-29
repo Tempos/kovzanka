@@ -1,0 +1,32 @@
+README.md
+Screenshots/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# SQLite database files (keeps host DB out of container image builds)
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker and Git metadata
+.git/
+.gitignore
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

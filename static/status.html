@@ -28,7 +28,23 @@
     <template x-if="ticketNumber">
         <div>
             <p class="text-slate-400 text-sm font-semibold uppercase tracking-wider">Ваш номер у черзі</p>
-            <h1 class="text-7xl font-black text-blue-400 my-3" x-text="data.ticket_number ? '#' + data.ticket_number : '#' + ticketNumber">#---</h1>
+
+            <!-- Ticket Number Row with Centered Flanking Navigation Buttons -->
+            <div class="flex items-center justify-between my-3 px-2">
+                <button @click="loadTicket(Number(ticketNumber) - 1)"
+                        class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700 hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95"
+                        title="Попередній талон">
+                    ‹
+                </button>
+
+                <h1 class="text-7xl font-black text-blue-400" x-text="data.ticket_number ? '#' + data.ticket_number : '#' + ticketNumber">#---</h1>
+
+                <button @click="loadTicket(Number(ticketNumber) + 1)"
+                        class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700 hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95"
+                        title="Наступний талон">
+                    ›
+                </button>
+            </div>
 
             <!-- Плашка статусу -->
             <div :class="{

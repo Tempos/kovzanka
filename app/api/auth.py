@@ -6,22 +6,20 @@ from fastapi import APIRouter, Request, Response, Cookie, HTTPException, status
 from app.limiter import limiter
 from app.schemas import LoginRequest
 
-router = APIRouter()
+router = APIRouter(tags=["API Endpoints"])
 
-# In-memory active session store
-ACTIVE_SESSIONS = set()
+ACTIVE_SESSIONS = set()  # In-memory active session store
+
 if not (WORKER_PIN := os.getenv("WORKER_PIN")):
-    raise RuntimeError("Missing required environment variable: WORKER_PIN")
+    raise RuntimeError("Missing required environment variable: WORKER_PIN"
+                       "\nCreate file .env in root folder with WORKER_PIN=<pin>")
 
 
 @router.post("/api/login")
 @limiter.limit("5/minute")
 def login(data: LoginRequest, request: Request, response: Response):
     if data.pin != WORKER_PIN:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Невірний PIN"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Невірний PIN")
 
     session_token = secrets.token_hex(32)
     ACTIVE_SESSIONS.add(session_token)
