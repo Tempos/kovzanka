@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Request, Cookie
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi import APIRouter
+from fastapi import Cookie, Request
+from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.api.auth import is_authenticated_worker
@@ -19,10 +21,15 @@ def display_page():
 
 
 @router.get("/inventory")
-def inventory_page(request: Request, worker_session: str = Cookie(None)):
-    if not is_authenticated_worker(worker_session):
-        return RedirectResponse(url="/login?next=/inventory", status_code=303)
+def inventory_page():
     return FileResponse("static/inventory.html")
+
+
+@router.get("/staff")
+def staff_page(request: Request, worker_session: str = Cookie(None)):
+    if not is_authenticated_worker(worker_session):
+        return RedirectResponse(url="/login?next=/staff", status_code=303)
+    return FileResponse("static/staff.html")
 
 
 @router.get("/kasa1")

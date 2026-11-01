@@ -29,7 +29,7 @@ function parseServerDate(isoString) {
 
 function getWsStatus(wsConnected) {
     return wsConnected
-        ? {text: "ЗВ'ЯЗОК АКТИВНИЙ (WS)", class: "bg-green-500 animate-pulse"}
+        ? {title: "ЗВ'ЯЗОК АКТИВНИЙ (WS)", class: "bg-green-500 animate-pulse"}
         : {text: "ПЕРЕПІДКЛЮЧЕННЯ...", class: "bg-amber-500"}
 }
 
