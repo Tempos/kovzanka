@@ -4,13 +4,12 @@ function statusApp() {
 
         // --- API ACTIONS ---
         searchTicket() {
-            if (this.inputTicket.toString().trim()) {
-                window.location.search = `?ticket=${this.inputTicket.toString().trim()}`
-            }
+            const ticketNum = parseInt(this.inputTicket);
+            if (!isNaN(ticketNum) && ticketNum >= 101) {window.location.search = `?ticket=${ticketNum}`}
         },
 
         loadTicket(num) {
-            if (num < 1) return
+            if (num < 101) return
             window.location.search = `?ticket=${num}`
         },
 
@@ -23,14 +22,9 @@ function statusApp() {
             if (!this.ticketNumber) return
             try {
                 const res = await fetch(`/api/public/status/ticket/${this.ticketNumber}`)
-                if (res.ok) {
-                    this.data = await res.json()
-                } else {
-                    this.data = {status: "НЕ ЗНАЙДЕНО"}
-                }
-            } catch (e) {
-                console.error("Помилка завантаження статусу:", e)
-            }
+                if (res.ok) {this.data = await res.json()}
+                else {this.data = {status: "НЕ ЗНАЙДЕНО"}}
+            } catch (e) {console.error("Помилка завантаження статусу:", e)}
         },
 
         init() {
@@ -41,9 +35,7 @@ function statusApp() {
             this.fetchStatus()
             this.pollInterval = setInterval(() => this.fetchStatus(), 5000)
 
-            createQueueWebSocket({
-                onMessage: () => this.fetchStatus(), onOpen: () => this.fetchStatus()
-            })
+            createQueueWebSocket({onMessage: () => this.fetchStatus(), onOpen: () => this.fetchStatus()})
 
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === "visible") this.fetchStatus()
