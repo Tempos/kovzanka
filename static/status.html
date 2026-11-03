@@ -14,9 +14,7 @@
 <body class="ak-site ak-status bg-slate-900 text-white min-h-screen flex items-center justify-center p-4" x-data="statusApp()" x-init="init()">
 <header class="ak-header">
     <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
-    <nav class="ak-nav" aria-label="Головна навігація">
-        <a href="/">Головна</a><a href="/kasa1">Реєстрація</a><a href="/kasa2">Видача</a><a href="/inventory">Залишки</a><a href="/display">Табло</a><a href="/status">Мій талон</a>
-    </nav>
+    <nav class="ak-nav" aria-label="Головна навігація"><a href="/">Головна</a><a href="/inventory">Залишки</a><a href="/display">Табло</a><a href="/status">Мій талон</a><a href="/staff">Для персоналу</a></nav>
 </header>
 <main class="ak-page">
 <div class="w-full max-w-md bg-slate-800 rounded-3xl p-6 shadow-2xl text-center border border-slate-700">
@@ -26,10 +24,12 @@
         <div class="space-y-4">
             <h2 class="text-xl font-bold">Введіть номер талона</h2>
             <div class="flex gap-2">
-                <input @keyup.enter="searchTicket()" placeholder="Наприклад: 106" type="number" x-model="inputTicket"
+                <input @keyup.enter="searchTicket()" placeholder="101" type="number" min="101" x-model="inputTicket"
                        class="flex-1 bg-slate-900 border border-slate-700 px-4 py-2 rounded-xl text-white outline-none focus:border-blue-500">
                 <button @click="searchTicket()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl font-bold">Знайти</button>
             </div>
+            <div class="border-t border-slate-800 my-6"></div>
+            <a href="/" class="block text-center text-sm text-slate-400 hover:text-white transition">← На головну (для гостей)</a>
         </div>
     </template>
 
@@ -40,9 +40,9 @@
 
             <!-- Ticket Number Row with Centered Flanking Navigation Buttons -->
             <div class="flex items-center justify-between my-3 px-2">
-                <button @click="loadTicket(Number(ticketNumber) - 1)"
-                        class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700 hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95"
-                        title="Попередній талон">
+                <button @click="loadTicket(Number(ticketNumber) - 1)" title="Попередній талон"
+                        class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700
+                        hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95">
                     ‹
                 </button>
 
@@ -95,11 +95,13 @@
 
             <div class="mt-6 pt-4 border-t border-slate-700/50">
                 <button @click="resetTicket()" class="text-xs text-slate-400 hover:text-white underline">Ввести інший номер талона</button>
+                <div class="border-t border-slate-800 my-6"></div>
+                <a href="/" class="block text-center text-sm text-slate-400 hover:text-white transition">← На головну (для гостей)</a>
             </div>
         </div>
     </template>
 </div>
 </main>
-<footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/login">Вхід для працівників ↗</a></footer>
+<footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/staff">Вхід для працівників ↗</a></footer>
 </body>
 </html>

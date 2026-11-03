@@ -9,5 +9,6 @@ services:
       - .env
     volumes:
       - .:/app
+      - /app/.venv
     environment:
       - PYTHONUNBUFFERED=1
