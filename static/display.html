@@ -7,8 +7,17 @@
     <script defer src="/static/js/alpine.js"></script>
     <script src="/static/js/tailwind.js"></script>
     <script src="/static/js/shared.js"></script>
+<link rel="stylesheet" href="/static/css/akulamama.css">
+<script defer src="/static/js/akulamama.js"></script>
 </head>
-<body class="bg-gray-900 text-white min-h-screen p-6 font-sans" x-data="displayApp()">
+<body class="ak-site ak-display bg-gray-900 text-white min-h-screen p-6 font-sans" x-data="displayApp()">
+<header class="ak-header">
+    <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
+    <nav class="ak-nav" aria-label="Головна навігація">
+        <a href="/">Головна</a><a href="/kasa1">Реєстрація</a><a href="/kasa2">Видача</a><a href="/inventory">Залишки</a><a href="/display">Табло</a><a href="/status">Мій талон</a>
+    </nav>
+</header>
+<main class="ak-page">
 <div class="max-w-7xl mx-auto">
     <header class="flex justify-between items-center pb-6 border-b border-gray-800 mb-8">
         <h1 class="text-4xl font-black uppercase tracking-wider text-blue-400">Електронна Черга</h1>
@@ -82,5 +91,7 @@
         }
     }
 </script>
+</main>
+<footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/login">Вхід для працівників ↗</a></footer>
 </body>
 </html>

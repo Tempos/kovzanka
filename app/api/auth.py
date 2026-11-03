@@ -29,7 +29,7 @@ def login(data: LoginRequest, request: Request, response: Response):
         value=session_token,
         httponly=True,
         samesite="lax",
-        secure=True,
+        secure=os.getenv("COOKIE_SECURE", "true").lower() == "true",
         max_age=36000
     )
     return {"status": "success"}

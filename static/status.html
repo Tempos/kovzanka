@@ -4,12 +4,21 @@
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Статус у черзі</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/tailwind.js"></script>
     <script src="/static/js/shared.js"></script>
     <script src="/static/js/status.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="/static/js/alpine.js"></script>
+<link rel="stylesheet" href="/static/css/akulamama.css">
+<script defer src="/static/js/akulamama.js"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4" x-data="statusApp()" x-init="init()">
+<body class="ak-site ak-status bg-slate-900 text-white min-h-screen flex items-center justify-center p-4" x-data="statusApp()" x-init="init()">
+<header class="ak-header">
+    <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
+    <nav class="ak-nav" aria-label="Головна навігація">
+        <a href="/">Головна</a><a href="/kasa1">Реєстрація</a><a href="/kasa2">Видача</a><a href="/inventory">Залишки</a><a href="/display">Табло</a><a href="/status">Мій талон</a>
+    </nav>
+</header>
+<main class="ak-page">
 <div class="w-full max-w-md bg-slate-800 rounded-3xl p-6 shadow-2xl text-center border border-slate-700">
 
     <!-- Пошукове поле, якщо номер талона відсутній в URL -->
@@ -90,5 +99,7 @@
         </div>
     </template>
 </div>
+</main>
+<footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/login">Вхід для працівників ↗</a></footer>
 </body>
 </html>

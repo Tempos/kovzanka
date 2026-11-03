@@ -1,17 +1,26 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <title>Inventory — Ковзанка Staff</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Наявність ковзанів — Акула Мама</title>
     <script defer src="/static/js/alpine.js"></script>
     <script src="/static/js/tailwind.js"></script>
     <script src="/static/js/shared.js"></script>
     <script src="/static/js/inventory.js"></script>
+<link rel="stylesheet" href="/static/css/akulamama.css">
+<script defer src="/static/js/akulamama.js"></script>
 </head>
-<body class="bg-gray-100 p-6">
+<body class="ak-site ak-inventory bg-gray-100 p-6">
+<header class="ak-header">
+    <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
+    <nav class="ak-nav" aria-label="Головна навігація">
+        <a href="/">Головна</a><a href="/kasa1">Реєстрація</a><a href="/kasa2">Видача</a><a href="/inventory">Залишки</a><a href="/display">Табло</a><a href="/status">Мій талон</a>
+    </nav>
+</header>
+<main class="ak-page">
 <div class="max-w-4xl mx-auto" x-data="inventory()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Inventory</h1>
+        <h1 class="text-2xl font-bold text-gray-800">Наявність ковзанів</h1>
         <div class="flex items-center space-x-4">
             <!-- WebSocket Status Badge -->
             <div class="flex items-center space-x-2 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-full">
@@ -51,5 +60,7 @@
         </table>
     </div>
 </div>
+</main>
+<footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/login">Вхід для працівників ↗</a></footer>
 </body>
 </html>
