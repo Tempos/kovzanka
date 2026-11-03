@@ -15,7 +15,7 @@ from app.ws_manager import manager
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
 
 
-@router.get("/inventory", dependencies=[Depends(verify_worker)])
+@router.get("/inventory")
 def get_inventory_status(db: Session = Depends(get_db)):
     """Exposes current counts to cashiers for inventory tracking."""
     active_skaters = db.query(QueueItem).filter(
