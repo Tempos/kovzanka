@@ -100,6 +100,21 @@ function kasa2App() {
             return item.duration_minutes ? item.duration_minutes + " хв" : "—"
         },
 
+        async revertStatus(itemId) {
+            console.log("Кнопка відкату натиснута для ID:", itemId) // <-- Debug log
+            try {
+                const response = await fetch(`/api/queue/${itemId}/revert`, {
+                    method: "POST", headers: {"Content-Type": "application/json"}
+                })
+                if (!response.ok) {
+                    const err = await response.text()
+                    console.error("Помилка відкату:", err)
+                    return
+                }
+                await this.fetchQueue()
+            } catch (e) { console.error("Помилка відкату статусу:", e) }
+        },
+
         async init() {
             this.initInventory()
             if (typeof this.fetchQueue === "function") await this.fetchQueue()

@@ -66,11 +66,11 @@
                     </td>
 
                     <!--SIZES-->
-                    <td class="px-2 py-3 min-w-[130px] sm:min-w-[160px]">
+                    <td class="px-2 py-3 min-w-[150px] sm:min-w-[180px]">
                         <div class="flex flex-wrap gap-1">
                             <template x-for="(size, idx) in item.shoe_sizes" :key="idx">
-                                <span class="w-7 h-7 flex items-center justify-center bg-slate-100 text-slate-800 text-xs font-bold rounded border border-slate-200 shrink-0">
-                                    <span x-text="size"></span>
+                                <span class="px-2 py-1 flex items-center justify-center bg-slate-100 text-slate-800 text-xs font-bold rounded border border-slate-200 shrink-0">
+                                    <span x-text="formatSizeKey ? formatSizeKey(size) : size"></span>
                                 </span>
                             </template>
                         </div>
@@ -155,6 +155,14 @@
                                 </button>
                             </template>
 
+                            <!-- Кнопка відкату (повернення на попередній стан) -->
+                            <template x-if="item.status !== 'ЧЕКАЄ'">
+                                <button @click="revertStatus(item.id)"
+                                        class="bg-gray-600 hover:bg-gray-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition"
+                                        title="Відкотити попередню дію">
+                                    ↩️
+                                </button>
+                            </template>
                         </div>
                     </td>
                 </tr>
