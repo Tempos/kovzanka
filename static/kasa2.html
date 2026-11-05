@@ -8,8 +8,15 @@
     <script src="/static/js/tailwind.js"></script>
     <script src="/static/js/shared.js"></script>
     <script src="/static/js/kasa2.js"></script>
+<link rel="stylesheet" href="/static/css/akulamama.css">
+<script defer src="/static/js/akulamama.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-4 sm:p-8" x-data="kasa2App()">
+<body class="ak-site ak-kasa2 bg-gray-100 min-h-screen p-8" x-data="kasa2App()">
+<header class="ak-header">
+    <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
+    <nav class="ak-nav" aria-label="Головна навігація"><a href="/">Для гостей</a><a href="/staff">Персонал</a><a href="/kasa1">Реєстрація</a><a href="/kasa2">Видача</a><a href="/inventory">Залишки</a><a href="/docs">API</a></nav>
+</header>
+<main class="ak-page">
 <div class="max-w-6xl mx-auto">
     <!-- Шапка -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -17,7 +24,7 @@
 
         <div class="flex items-center space-x-4 w-full sm:w-auto justify-between sm:justify-end">
             <button class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition"
-                    @click="showInventoryModal = true; fetchInventory()"> 📊 Inventory
+                    @click="showInventoryModal = true; fetchInventory()"> Наявність ковзанів
             </button>
 
             <!-- WebSocket Status Badge with Mouseover Tooltip -->
@@ -162,5 +169,7 @@
 
 <!-- Inventory Modal Popup -->
 {% include "inventory_modal.html" %}
+</main>
+<footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/staff">Вхід для працівників ↗</a></footer>
 </body>
 </html>

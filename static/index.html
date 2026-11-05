@@ -1,33 +1,5 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Льодова Кавзанка</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center py-3 px-4">
-    <div class="max-w-md w-full space-y-2">
-        <h1 class="text-lg sm:text-2xl font-black text-center text-blue-400">⛸️ Льодова Кавзанка</h1>
-
-        <!-- Customer Links -->
-        <a href="/status" class="block bg-blue-900/40 hover:bg-blue-900/60 border border-blue-500/40 py-2 px-4 rounded-xl text-center text-blue-300 transition text-sm sm:text-base font-bold">
-            📱 Перевірити статус <span class="font-normal text-xs text-blue-200/70 ml-1">— Статус талона</span>
-        </a>
-        <a href="/display" class="block bg-slate-800 hover:bg-slate-700 py-2 px-4 rounded-xl border border-slate-700 text-center transition text-sm sm:text-base font-bold">
-            📺 Табло черги <span class="font-normal text-xs text-slate-400 ml-1">— Display</span>
-        </a>
-        <a href="/inventory" class="block bg-slate-800 hover:bg-slate-700 py-2 px-4 rounded-xl border border-slate-700 text-center transition text-sm sm:text-base font-bold">
-            📊 Залишки ковзанів <span class="font-normal text-xs text-slate-400 ml-1">— Inventory</span>
-        </a>
-
-        <!-- Divider -->
-        <div class="border-t border-slate-800 my-2"></div>
-
-        <!-- Staff Portal Link -->
-        <a href="/staff" class="block bg-slate-800/50 hover:bg-slate-800 py-1.5 px-4 rounded-xl border border-slate-700/60 text-center text-slate-300 transition text-xs sm:text-sm font-semibold">
-            🔐 Сторінка для персоналу
-        </a>
-    </div>
-</body>
-</html>
+<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ковзанка — Акула Мама</title><link rel="stylesheet" href="/static/css/akulamama.css"><script defer src="/static/js/akulamama.js"></script></head><body class="ak-site ak-home"><header class="ak-header">
+    <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
+    <nav class="ak-nav" aria-label="Головна навігація"><a href="/">Головна</a><a href="/inventory">Залишки</a><a href="/display">Табло</a><a href="/status">Мій талон</a><a href="/staff">Для персоналу</a></nav>
+</header><main class="ak-page"><section class="ak-hero" aria-labelledby="hero-title"><div><div class="ak-eyebrow">Спортивно-розважальний комплекс</div><h1 id="hero-title">Зустрінемось<br>на <em>ковзанці.</em></h1><p>Більше руху, більше усмішок. Перевіряйте свій талон, стежте за чергою та насолоджуйтеся кожною хвилиною на льоду.</p><a href="/status" class="ak-primary">Перевірити свій талон <span aria-hidden="true">↗</span></a></div>
+<div class="ak-art" aria-hidden="true"><svg viewBox="0 0 280 280" fill="none"><circle cx="140" cy="135" r="103" stroke="#92d9df" stroke-opacity=".18"/><path d="M104 49 154 53 162 117C165 130 184 137 209 148C221 153 229 168 222 184H66C62 172 66 162 78 153L98 132Z" fill="#92d9df" fill-opacity=".09" stroke="#92d9df" stroke-width="3" stroke-linejoin="round"/><path d="m107 81 40 4m-43 13 44 4m-47 13 48 4m-53 13 39 5" stroke="#ef83aa" stroke-width="4" stroke-linecap="round"/><path d="M84 186v22m115-22v22M50 216h166q18 0 25-15" stroke="#92d9df" stroke-width="4" stroke-linecap="round"/><path d="m216 54 4 12 12 4-12 4-4 12-4-12-12-4 12-4Z" fill="#ef83aa"/><circle cx="63" cy="107" r="4" fill="#ef83aa"/><path d="m61 232 138 0" stroke="#92d9df" stroke-opacity=".25" stroke-linecap="round"/></svg><span class="ak-art-caption">Акула Мама · Час на лід</span></div></section><section aria-labelledby="nav-title"><div class="ak-section-heading"><h2 id="nav-title">Усе для вашого сеансу</h2><span>Оберіть потрібний розділ</span></div><div class="ak-cards"><a href="/status" class="ak-nav-card ak-feature"><div class="ak-card-top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v5a2 2 0 0 0 0 4v5H3v-5a2 2 0 0 0 0-4Z"/><path d="M15 5v3m0 3v2m0 3v3"/></svg><span class="ak-card-number">01</span></div><h3>Мій талон</h3><p>Перевіряйте свій номер і дізнавайтеся, коли ваша черга.</p><span class="ak-card-arrow" aria-hidden="true">↗</span></a><a href="/display" class="ak-nav-card "><div class="ak-card-top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="15" rx="2"/><path d="M8 22h8m-4-4v4M6 8h3m3 0h6M6 13h3m3 0h6"/></svg><span class="ak-card-number">02</span></div><h3>Табло для гостей</h3><p>Слідкуйте за чергою та запрошеннями на видачу ковзанів.</p><span class="ak-card-arrow" aria-hidden="true">↗</span></a><a href="/inventory" class="ak-nav-card "><div class="ak-card-top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-5 9 5v11l-9 5-9-5Z"/><path d="m3 7 9 5 9-5M12 12v11M7 5l9 5"/></svg><span class="ak-card-number">03</span></div><h3>Наявність ковзанів</h3><p>Переглядайте вільні розміри й орієнтовний час повернення.</p><span class="ak-card-arrow" aria-hidden="true">↗</span></a><a href="/staff" class="ak-nav-card "><div class="ak-card-top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="12" rx="3"/><path d="M8 10V6a4 4 0 0 1 8 0v4m-4 5v3"/></svg><span class="ak-card-number">04</span></div><h3>Для працівників</h3><p>Увійдіть за ПІН-кодом, щоб почати роботу з ковзанкою.</p><span class="ak-card-arrow" aria-hidden="true">↗</span></a></div></section></main><footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/staff">Вхід для працівників ↗</a></footer></body></html>

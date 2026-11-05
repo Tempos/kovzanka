@@ -19,8 +19,15 @@
             .size-btn-idle {@apply bg-white text-slate-700 border-slate-200 hover:bg-slate-100}
         }
     </style>
+<link rel="stylesheet" href="/static/css/akulamama.css">
+<script defer src="/static/js/akulamama.js"></script>
 </head>
-<body class="bg-slate-100 min-h-screen p-6" x-data="kasa1()">
+<body class="ak-site ak-kasa1 bg-slate-100 min-h-screen p-6" x-data="kasa1()">
+<header class="ak-header">
+    <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
+    <nav class="ak-nav" aria-label="Головна навігація"><a href="/">Для гостей</a><a href="/staff">Персонал</a><a href="/kasa1">Реєстрація</a><a href="/kasa2">Видача</a><a href="/inventory">Залишки</a><a href="/docs">API</a></nav>
+</header>
+<main class="ak-page">
 <div class="card">
     <h1 class="text-2xl font-bold text-slate-800 mb-6 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 text-center sm:text-left">
         <span>📝 Каса 1:</span>
@@ -37,8 +44,8 @@
             <div class="flex justify-between items-center mb-2">
                 <label class="field-label mb-0">Оберіть розміри ковзанів</label>
                 <!-- Button to open modal -->
-                <button @click="showInventoryModal = true; fetchInventory()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition">
-                    📊 Inventory
+                <button type="button" @click="showInventoryModal = true; fetchInventory()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition">
+                    Наявність ковзанів
                 </button>
             </div>
             <div class="flex justify-between items-center mb-2">
@@ -125,5 +132,7 @@
 </div>
 <!-- Inventory Modal Popup -->
 {% include "inventory_modal.html" %}
+</main>
+<footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/staff">Вхід для працівників ↗</a></footer>
 </body>
 </html>
