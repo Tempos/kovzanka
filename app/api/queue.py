@@ -5,12 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
-from app.api.auth import verify_worker
 from app.db import DBSession, get_db
 from app.inventory import calculate_live_inventory
 from app.models import QueueItem, QueueStatus
 from app.schemas import CreateQueueRequest, UserStatusResponse, QueueItemResponse, ExtendSessionRequest
 from app.ws_manager import manager
+from app.api.auth import verify_kasa1, verify_kasa2
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
 
@@ -40,7 +40,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @router.get("/queue", response_model=List[QueueItemResponse])
 def get_full_queue(db: DBSession):
-    return (  # Повертаємо тільки ті талони, які ще в процесі
+    active_items = (
         db.query(QueueItem)
         .filter(QueueItem.status.in_([
             QueueStatus.WAITING,
@@ -51,8 +51,21 @@ def get_full_queue(db: DBSession):
         .all()
     )
 
+    recent_closed = (
+        db.query(QueueItem)
+        .filter(QueueItem.status.in_([
+            QueueStatus.RETURNED,
+            QueueStatus.CANCELLED
+        ]))
+        .order_by(QueueItem.id.desc())
+        .limit(5)
+        .all()
+    )
 
-@router.post("/queue", response_model=QueueItemResponse)
+    return active_items + recent_closed
+
+
+@router.post("/queue", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa1)])
 async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
     last_ticket = db.query(QueueItem).order_by(QueueItem.id.desc()).first()
     next_number = (last_ticket.ticket_number + 1) if last_ticket else 101
@@ -91,7 +104,7 @@ async def update_status(item_id: int, status: QueueStatus, db: DBSession):
     return item
 
 
-@router.patch("/queue/{item_id}/extend", response_model=QueueItemResponse, dependencies=[Depends(verify_worker)])
+@router.patch("/queue/{item_id}/extend", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
 async def extend_session(item_id: int, payload: ExtendSessionRequest, db: Session = Depends(get_db)):
     if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
@@ -133,7 +146,7 @@ def get_user_status(tracking_token: str, db: DBSession):
 
 @router.get("/public/status/ticket/{ticket}", response_model=UserStatusResponse)
 def get_user_status_by_ticket(ticket: int, db: DBSession):
-    if not (item:= (db.query(QueueItem).filter(QueueItem.ticket_number == ticket).first())):
+    if not (item := (db.query(QueueItem).filter(QueueItem.ticket_number == ticket).first())):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
 
     position = 0
@@ -152,3 +165,26 @@ def get_user_status_by_ticket(ticket: int, db: DBSession):
         position_in_queue=position,
         estimated_wait_minutes=position * 5,
     )
+
+
+@router.post("/queue/{ticket_id}/revert", dependencies=[Depends(verify_kasa2)])
+def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
+    ticket = db.query(QueueItem).filter(QueueItem.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    # Step backward through the workflow states
+    if ticket.status == QueueStatus.RETURNED:
+        ticket.status = QueueStatus.SERVED
+    elif ticket.status == QueueStatus.SERVED:
+        ticket.status = QueueStatus.CALLING
+    elif ticket.status == QueueStatus.CALLING:
+        ticket.status = QueueStatus.WAITING
+    elif ticket.status == QueueStatus.CANCELLED:
+        ticket.status = QueueStatus.WAITING
+    else:
+        raise HTTPException(status_code=400, detail="Цей статус не можна відкотити")
+
+    db.commit()
+    db.refresh(ticket)
+    return ticket

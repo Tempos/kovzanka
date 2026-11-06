@@ -161,3 +161,29 @@ function wsSyncMixin() {
         }
     }
 }
+
+function formatSizeKey(key) {
+    const match = String(key).match(/^(\d+)\s*\((.*?)\)$/)
+    if (!match) return key
+    const [_, num, cat] = match
+    const shortCat = cat.startsWith("фіг") ? "фіг" : (cat.startsWith("хок") ? "хок" : cat)
+    return `${num} (${shortCat})`
+}
+
+function formatSizesSummary(sizes, maxChars = 30) {
+    if (typeof sizes === "string") {
+        try {sizes = JSON.parse(sizes)} catch (e) {sizes = sizes ? [sizes] : []}
+    }
+
+    if (!sizes || sizes.length === 0) return "—"
+
+    const counts = {}
+    for (const s of sizes) counts[s] = (counts[s] || 0) + 1
+
+    const groupStrs = Object.entries(counts).map(([s, count]) => {
+        const formatted = formatSizeKey(s)
+        return count > 1 ? `${formatted}×${count}` : `${formatted}`
+    })
+
+    return groupStrs.join(", ")
+}

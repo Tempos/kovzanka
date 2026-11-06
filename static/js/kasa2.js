@@ -15,12 +15,18 @@ function kasa2App() {
         async fetchInventory() {
             try {
                 const res = await fetch("/api/inventory")
-                if (res.ok) { this.inventory = await res.json() }
-            } catch (e) { console.error("Помилка завантаження залишків:", e) }
+                if (res.ok) {
+                    this.inventory = await res.json()
+                }
+            } catch (e) {
+                console.error("Помилка завантаження залишків:", e)
+            }
         },
 
         // --- API ACTIONS ---
-        get wsStatus() { return getWsStatus(this.wsConnected) },
+        get wsStatus() {
+            return getWsStatus(this.wsConnected)
+        },
 
         async changeStatus(itemId, newStatus) {
             const item = this.queue.find(i => i.id === itemId)
@@ -33,7 +39,9 @@ function kasa2App() {
                 const response = await fetch(
                     `/api/queue/${itemId}/status?status=${encodeURIComponent(newStatus)}&expected_status=${encodeURIComponent(currentStatus)}`,
                     {method: "PATCH", headers: {"Content-Type": "application/json"}})
-                if (!response.ok) {await this.fetchQueue()}
+                if (!response.ok) {
+                    await this.fetchQueue()
+                }
             } catch (e) {
                 console.error("Помилка зміни статусу:", e)
                 await this.fetchQueue()
@@ -100,10 +108,48 @@ function kasa2App() {
             return item.duration_minutes ? item.duration_minutes + " хв" : "—"
         },
 
+        // --- QUEUE FILTER GETTERS ---
+        get activeQueue() {
+            return this.queue.filter(i =>
+                ['ЧЕКАЄ', 'ВИКЛИКАЄТЬСЯ', 'ОБСЛУГОВУЄТЬСЯ', 'WAITING', 'CALLING', 'SERVED'].includes(i.status)
+            )
+        },
+
+        get closedQueue() {
+            return this.queue.filter(i =>
+                ['ПОВЕРНЕНО', 'СКАСОВАНО', 'RETURNED', 'CANCELLED'].includes(i.status)
+            )
+        },
+
+        async confirmCancel(itemId) {
+            if (window.confirm("Ви дійсно хочете скасувати цей квиток?")) {
+                await this.changeStatus(itemId, 'СКАСОВАНО')
+            }
+        },
+
+        async revertStatus(itemId) {
+            console.log("Кнопка відкату натиснута для ID:", itemId) // <-- Debug log
+            try {
+                const response = await fetch(`/api/queue/${itemId}/revert`, {
+                    method: "POST", headers: {"Content-Type": "application/json"}
+                })
+                if (!response.ok) {
+                    const err = await response.text()
+                    console.error("Помилка відкату:", err)
+                    return
+                }
+                await this.fetchQueue()
+            } catch (e) {
+                console.error("Помилка відкату статусу:", e)
+            }
+        },
+
         async init() {
             this.initInventory()
             if (typeof this.fetchQueue === "function") await this.fetchQueue()
-            setInterval(() => { this.now = Date.now() }, 1000)
+            setInterval(() => {
+                this.now = Date.now()
+            }, 1000)
             this.initWebSocket()
         }
     }

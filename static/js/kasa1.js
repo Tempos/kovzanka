@@ -88,6 +88,7 @@ function kasa1() {
             this.durationMinutes = 60
             this.comment = ""
         },
+
         async submitForm() {
             if (!this.canSubmit) return
 
@@ -96,19 +97,36 @@ function kasa1() {
 
             try {
                 const response = await fetch("/api/queue", {
-                    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
                         phone: fullPhone,
                         shoe_sizes: this.shoeSizes,
                         duration_minutes: this.durationMinutes,
                         comment: this.comment || null
                     })
                 })
-                if (!response.ok) return
+                if (!response.ok) {
+                    const errorBody = await response.text()
+                    console.error("Помилка сервера:", response.status, errorBody)
+                    return
+                }
 
                 this.createdTicket = await response.json()
                 this.createdTicket.phone = displayPhone
                 this.resetForm()
             } catch (e) {console.error("Помилка створення квитка:", e)}
+        },
+
+        parseSizeNum(key) {
+            const match = String(key).match(/^(\d+)/)
+            return match ? match[1] : key
+        },
+        parseSizeCat(key) {
+            const match = String(key).match(/\((.*?)\)/)
+            if (!match) return ""
+            const cat = match[1]
+            return cat.startsWith("фіг") ? "фіг." : (cat.startsWith("хок") ? "хок." : cat)
         },
 
         async init() {
