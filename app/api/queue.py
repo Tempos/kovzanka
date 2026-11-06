@@ -40,7 +40,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @router.get("/queue", response_model=List[QueueItemResponse])
 def get_full_queue(db: DBSession):
-    return (  # Повертаємо тільки ті талони, які ще в процесі
+    active_items = (
         db.query(QueueItem)
         .filter(QueueItem.status.in_([
             QueueStatus.WAITING,
@@ -50,6 +50,19 @@ def get_full_queue(db: DBSession):
         .order_by(QueueItem.created_at.asc())
         .all()
     )
+
+    recent_closed = (
+        db.query(QueueItem)
+        .filter(QueueItem.status.in_([
+            QueueStatus.RETURNED,
+            QueueStatus.CANCELLED
+        ]))
+        .order_by(QueueItem.id.desc())
+        .limit(5)
+        .all()
+    )
+
+    return active_items + recent_closed
 
 
 @router.post("/queue", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa1)])
