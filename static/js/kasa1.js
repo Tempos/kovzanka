@@ -19,9 +19,22 @@ function kasa1() {
         showInventoryModal: false,
         queue: [],
         wsConnected: false,
+        activeTab: 'figure', // 'figure' або 'hockey'
 
         // --- ОБЧИСЛЮВАННІ ВЛАСТИВОСТІ ---
         get canSubmit() {return this.shoeSizes.length > 0 && this.rawDigits.length >= LOCAL_PHONE_DIGITS},
+
+        get filteredInventory() {
+            const filtered = {}
+            for (const [size, data] of Object.entries(this.inventory)) {
+                const lower = String(size).toLowerCase()
+                const isHockey = lower.includes('хок') || lower.includes('hok')
+
+                if (this.activeTab === 'hockey' && isHockey) {filtered[size] = data}
+                else if (this.activeTab === 'figure' && !isHockey) {filtered[size] = data}
+            }
+            return filtered
+        },
 
         // --- ІНВЕНТАР ТА ЗАЛИШКИ ---
         async fetchInventory() {
