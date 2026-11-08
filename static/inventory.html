@@ -27,67 +27,8 @@
         </div>
     </div>
 
-    <!-- Inventory Table Component -->
-    <div class="bg-white shadow rounded-lg p-2 sm:p-4 overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-left text-xs sm:text-sm">
-            <thead>
-            <tr class="bg-gray-50 text-gray-600 uppercase text-[10px] sm:text-xs font-medium tracking-wider">
-                <th class="py-2 px-2 sm:py-3 sm:px-4">Розмір</th>
-                <th class="py-2 px-2 sm:py-3 sm:px-4 text-center">Всього</th>
-                <th class="py-2 px-2 sm:py-3 sm:px-4 text-center">На руках</th>
-                <th class="py-2 px-2 sm:py-3 sm:px-4 text-center">Вільні</th>
-                <th class="py-2 px-2 sm:py-3 sm:px-4 text-center">У черзі</th>
-                <th x-show="isAdmin" class="py-2 px-2 sm:py-3 sm:px-4 text-center" style="display: none;">На ремонті</th>
-                <th class="py-2 px-2 sm:py-3 sm:px-4" :class="isAdmin ? 'text-center' : 'text-right'">Орієнт. очікування</th>
-                <th x-show="isAdmin" class="py-2 px-2 sm:py-3 sm:px-4 text-right" style="display: none;">Дії</th>
-            </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 bg-white">
-            <template x-for="(data, size) in inventory" :key="size">
-                <tr class="hover:bg-gray-50 transition">
-                    <td class="py-2 px-2 sm:py-3 sm:px-4 font-bold text-gray-900" x-text="size"></td>
-
-                    <!-- Total Stock (Read-only for public, +/- buttons for Admin) -->
-                    <td class="py-2 px-2 sm:py-3 sm:px-4 text-center">
-                        <span x-show="!isAdmin" class="text-gray-700" x-text="data.total"></span>
-                        <div x-show="isAdmin" class="inline-flex items-center gap-1 justify-center" style="display: none;">
-                            <button @click="updateStock(size, data.total - 1)" class="px-1.5 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold">-</button>
-                            <span class="font-bold text-gray-800 w-6 text-center" x-text="data.total"></span>
-                            <button @click="updateStock(size, data.total + 1)" class="px-1.5 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold">+</button>
-                        </div>
-                    </td>
-
-                    <td class="py-2 px-2 sm:py-3 sm:px-4 text-center text-blue-600 font-semibold" x-text="data.in_use"></td>
-                    <td class="py-2 px-2 sm:py-3 sm:px-4 text-center">
-                        <span :class="data.available > 0 ? 'text-green-600 font-bold' : 'text-red-500 font-bold'" x-text="data.available"></span>
-                    </td>
-                    <td class="py-2 px-2 sm:py-3 sm:px-4 text-center text-amber-600 font-semibold" x-text="data.in_queue || 0"></td>
-
-                    <!-- Maintenance Column (Admin only) -->
-                    <td x-show="isAdmin" class="py-2 px-2 sm:py-3 sm:px-4 text-center" style="display: none;">
-                        <div class="inline-flex items-center gap-1 justify-center">
-                            <button @click="updateStock(size, data.total, (data.maintenance_count || 0) - 1)" class="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded text-xs font-bold">-</button>
-                            <span class="font-bold text-amber-900 w-6 text-center" x-text="data.maintenance_count || 0"></span>
-                            <button @click="updateStock(size, data.total, (data.maintenance_count || 0) + 1)" class="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded text-xs font-bold">+</button>
-                        </div>
-                    </td>
-
-                    <td class="py-2 px-2 sm:py-3 sm:px-4 text-gray-500 font-mono text-xs" :class="isAdmin ? 'text-center' : 'text-right'" x-text="formatCountdown(data.target_timestamp, now)"></td>
-
-                    <!-- Delete Button (Admin only) -->
-                    <td x-show="isAdmin" class="py-2 px-2 sm:py-3 sm:px-4 text-right" style="display: none;">
-                        <button @click="deleteSize(size)" class="text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded text-xs" title="Видалити розмір">
-                            🗑️
-                        </button>
-                    </td>
-                </tr>
-            </template>
-            </tbody>
-        </table>
-    </div>
-
     <!-- Add New Size Form (Admin Only) -->
-    <div x-show="isAdmin" class="bg-white shadow rounded-lg p-4 mt-6" style="display: none;">
+    <div x-show="isAdmin" class="bg-white shadow rounded-lg p-4sm:p-5 mb-4" style="display: none;">
         <h3 class="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wider">➕ Додати новий розмір</h3>
         <div class="flex flex-col sm:flex-row gap-3">
             <input type="text" x-model="newSize" placeholder="Розмір (напр. 42 або 38_hok)" class="px-3 py-2 border rounded text-sm flex-1">
@@ -96,6 +37,65 @@
                 Додати в базу
             </button>
         </div>
+    </div>
+
+    <!-- Inventory Table Component -->
+    <div class="bg-white shadow rounded-lg p-2 sm:p-4 w-full">
+        <table class="w-full divide-y divide-gray-200 text-left text-xs sm:text-sm table-auto">
+            <thead>
+            <tr class="bg-gray-50 text-gray-600 uppercase text-[10px] sm:text-xs font-medium tracking-wider">
+                <th class="py-2 px-3 sm:py-3 sm:px-4">Розмір</th>
+                <th class="py-2 px-3 sm:py-3 sm:px-4 text-center">Всього</th>
+                <th class="py-2 px-3 sm:py-3 sm:px-4 text-center">На руках</th>
+                <th class="py-2 px-3 sm:py-3 sm:px-4 text-center">Вільні</th>
+                <th class="py-2 px-3 sm:py-3 sm:px-4 text-center">У черзі</th>
+                <th x-show="isAdmin" class="py-2 px-3 sm:py-3 sm:px-4 text-center" style="display: none;">На ремонті</th>
+                <th class="py-2 px-3 sm:py-3 sm:px-4" :class="isAdmin ? 'text-center' : 'text-right'">Орієнт. очікування</th>
+                <th x-show="isAdmin" class="py-2 px-3 sm:py-3 sm:px-4 text-right" style="display: none;">Дії</th>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 bg-white">
+            <template x-for="(data, size) in inventory" :key="size">
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="py-2 px-3 sm:py-3 sm:px-4 font-bold text-gray-900" x-text="size"></td>
+
+                    <!-- Total Stock (Read-only for public, +/- buttons for Admin) -->
+                    <td class="py-2 px-3 sm:py-3 sm:px-4 text-center">
+                        <span x-show="!isAdmin" class="text-gray-700" x-text="data.total"></span>
+                        <div x-show="isAdmin" class="inline-flex items-center gap-1 justify-center" style="display: none;">
+                            <button @click="updateStock(size, data.total - 1)" class="px-1.5 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold">-</button>
+                            <span class="font-bold text-gray-800 w-6 text-center" x-text="data.total"></span>
+                            <button @click="updateStock(size, data.total + 1)" class="px-1.5 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold">+</button>
+                        </div>
+                    </td>
+
+                    <td class="py-2 px-3 sm:py-3 sm:px-4 text-center text-blue-600 font-semibold" x-text="data.in_use"></td>
+                    <td class="py-2 px-3 sm:py-3 sm:px-4 text-center">
+                        <span :class="data.available > 0 ? 'text-green-600 font-bold' : 'text-red-500 font-bold'" x-text="data.available"></span>
+                    </td>
+                    <td class="py-2 px-3 sm:py-3 sm:px-4 text-center text-amber-600 font-semibold" x-text="data.in_queue || 0"></td>
+
+                    <!-- Maintenance Column (Admin only) -->
+                    <td x-show="isAdmin" class="py-2 px-3 sm:py-3 sm:px-4 text-center" style="display: none;">
+                        <div class="inline-flex items-center gap-1 justify-center">
+                            <button @click="updateStock(size, data.total, (data.maintenance_count || 0) - 1)" class="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded text-xs font-bold">-</button>
+                            <span class="font-bold text-amber-900 w-6 text-center" x-text="data.maintenance_count || 0"></span>
+                            <button @click="updateStock(size, data.total, (data.maintenance_count || 0) + 1)" class="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded text-xs font-bold">+</button>
+                        </div>
+                    </td>
+
+                    <td class="py-2 px-3 sm:py-3 sm:px-4 text-gray-500 font-mono text-xs" :class="isAdmin ? 'text-center' : 'text-right'" x-text="formatCountdown(data.target_timestamp, now)"></td>
+
+                    <!-- Delete Button (Admin only) -->
+                    <td x-show="isAdmin" class="py-2 px-3 sm:py-3 sm:px-4 text-right" style="display: none;">
+                        <button @click="deleteSize(size)" class="text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded text-xs" title="Видалити розмір">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+            </template>
+            </tbody>
+        </table>
     </div>
 </div>
 </main>
