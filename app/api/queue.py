@@ -1,18 +1,77 @@
 from datetime import datetime, timedelta, timezone
 from typing import List
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.db import DBSession, get_db
+from app.api.auth import verify_kasa1
+from app.api.auth import verify_kasa2
+from app.db import DBSession
+from app.db import get_db
 from app.inventory import calculate_live_inventory
 from app.models import QueueItem, QueueStatus
+from app.models import SkateInventory
 from app.schemas import CreateQueueRequest, UserStatusResponse, QueueItemResponse, ExtendSessionRequest
+from app.schemas import InventoryItemCreate
 from app.ws_manager import manager
-from app.api.auth import verify_kasa1, verify_kasa2
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
+
+
+@router.post("/inventory", dependencies=[Depends(verify_kasa2)])
+async def create_inventory_item(payload: InventoryItemCreate, db: Session = Depends(get_db)):
+    existing = db.query(SkateInventory).filter(SkateInventory.size == payload.size).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Такий розмір вже існує в базі")
+
+    item = SkateInventory(
+        size=payload.size,
+        total_stock=payload.total_stock,
+        maintenance_count=payload.maintenance_count
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+
+    await manager.broadcast("INVENTORY_UPDATED")
+    return item
+
+
+class InventoryUpdatePayload(BaseModel):
+    size: str
+    total_stock: Optional[int] = None
+    maintenance_count: Optional[int] = None
+
+
+@router.patch("/inventory", dependencies=[Depends(verify_kasa2)])
+async def update_inventory_item(payload: InventoryUpdatePayload, db: Session = Depends(get_db)):
+    item = db.query(SkateInventory).filter(SkateInventory.size == payload.size).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Розмір не знайдено")
+
+    if payload.total_stock is not None:
+        item.total_stock = max(0, payload.total_stock)
+    if payload.maintenance_count is not None:
+        item.maintenance_count = max(0, payload.maintenance_count)
+
+    db.commit()
+    await manager.broadcast("INVENTORY_UPDATED")
+    return item
+
+
+@router.delete("/inventory", dependencies=[Depends(verify_kasa2)])
+async def delete_inventory_item(size: str, db: Session = Depends(get_db)):
+    item = db.query(SkateInventory).filter(SkateInventory.size == size).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Розмір не знайдено")
+
+    db.delete(item)
+    db.commit()
+    await manager.broadcast("INVENTORY_UPDATED")
+    return {"success": True}
 
 
 @router.get("/inventory")
@@ -25,7 +84,26 @@ def get_inventory_status(db: Session = Depends(get_db)):
             QueueStatus.SERVED
         ])
     ).all()
-    return calculate_live_inventory(active_skaters)
+
+    live_inventory = calculate_live_inventory(active_skaters)
+    db_inventory = db.query(SkateInventory).all()
+
+    # Ensure every size from the database table appears in the inventory view,
+    # and include maintenance_count so frontend buttons work correctly.
+    for item in db_inventory:
+        if item.size not in live_inventory:
+            live_inventory[item.size] = {
+                "total": item.total_stock,
+                "in_use": 0,
+                "available": max(0, item.total_stock - item.maintenance_count),
+                "in_queue": 0,
+                "target_timestamp": None
+            }
+        # Attach maintenance_count and ensure total stock matches the database
+        live_inventory[item.size]["maintenance_count"] = item.maintenance_count
+        live_inventory[item.size]["total"] = item.total_stock
+
+    return live_inventory
 
 
 @router.websocket("/ws/queue")

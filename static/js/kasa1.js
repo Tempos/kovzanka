@@ -29,19 +29,26 @@ function kasa1() {
             try {
                 const res = await fetch("/api/inventory")
                 if (res.ok) {
-                    const data = await res.json()
+                    const rawData = await res.json()
                     if (requestId === this.inventoryRequestId) {
-                        this.inventory = data
-                        this.inventoryError = false // Clear error on success
+                        // Природне сортування ключів (числа на початок, потім текст)
+                        const sortedKeys = Object.keys(rawData).sort((a, b) =>
+                            a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+                        )
+
+                        const sortedInventory = {}
+                        sortedKeys.forEach(key => {sortedInventory[key] = rawData[key]})
+
+                        this.inventory = sortedInventory
+                        this.inventoryError = false
                     }
-                    // Mark error on bad response
                 } else if (requestId === this.inventoryRequestId) {this.inventoryError = true}
             } catch (e) {
                 console.error("Помилка оновлення залишків ковзанів:", e)
-                // Mark error on network catch
                 if (requestId === this.inventoryRequestId) {this.inventoryError = true}
             }
         },
+
         async retryInventory() {
             this.inventoryError = false
             await this.fetchInventory()

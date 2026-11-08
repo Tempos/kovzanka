@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import List, Optional, Any
+from typing import List, Any
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel
+from pydantic import ConfigDict, field_validator
 
 from app.models import QueueStatus
 
@@ -15,6 +17,17 @@ class CreateQueueRequest(BaseModel):
 
 class ExtendSessionRequest(BaseModel):
     minutes: int = 15  # За замовчуванням +15 хвилин
+
+
+class InventoryItemCreate(BaseModel):
+    size: str
+    total_stock: int
+    maintenance_count: int = 0
+
+
+class InventoryItemUpdate(BaseModel):
+    total_stock: Optional[int] = None
+    maintenance_count: Optional[int] = None
 
 
 class LoginRequest(BaseModel):

@@ -19,8 +19,13 @@ def display_page():
 
 
 @router.get("/inventory")
-def inventory_page():
-    return FileResponse("static/inventory.html")
+def inventory_page(request: Request, kasa2_session: str = Cookie(None)):
+    is_admin = is_authenticated_kasa2(kasa2_session)
+    return templates.TemplateResponse(
+        request,
+        "inventory.html",
+        {"is_admin": is_admin}
+    )
 
 
 @router.get("/staff")

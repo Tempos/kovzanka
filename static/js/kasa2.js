@@ -16,17 +16,22 @@ function kasa2App() {
             try {
                 const res = await fetch("/api/inventory")
                 if (res.ok) {
-                    this.inventory = await res.json()
+                    const rawData = await res.json()
+
+                    // Природне сортування ключів (числа на початок, потім текст)
+                    const sortedKeys = Object.keys(rawData).sort((a, b) =>
+                        a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'})
+                    )
+
+                    const sortedInventory = {}
+                    sortedKeys.forEach(key => {sortedInventory[key] = rawData[key]})
+                    this.inventory = sortedInventory
                 }
-            } catch (e) {
-                console.error("Помилка завантаження залишків:", e)
-            }
+            } catch (e) {console.error("Помилка завантаження залишків у Касі 2:", e)}
         },
 
         // --- API ACTIONS ---
-        get wsStatus() {
-            return getWsStatus(this.wsConnected)
-        },
+        get wsStatus() {return getWsStatus(this.wsConnected)},
 
         async changeStatus(itemId, newStatus) {
             const item = this.queue.find(i => i.id === itemId)
@@ -39,9 +44,7 @@ function kasa2App() {
                 const response = await fetch(
                     `/api/queue/${itemId}/status?status=${encodeURIComponent(newStatus)}&expected_status=${encodeURIComponent(currentStatus)}`,
                     {method: "PATCH", headers: {"Content-Type": "application/json"}})
-                if (!response.ok) {
-                    await this.fetchQueue()
-                }
+                if (!response.ok) {await this.fetchQueue()}
             } catch (e) {
                 console.error("Помилка зміни статусу:", e)
                 await this.fetchQueue()
@@ -139,17 +142,13 @@ function kasa2App() {
                     return
                 }
                 await this.fetchQueue()
-            } catch (e) {
-                console.error("Помилка відкату статусу:", e)
-            }
+            } catch (e) {console.error("Помилка відкату статусу:", e)}
         },
 
         async init() {
             this.initInventory()
             if (typeof this.fetchQueue === "function") await this.fetchQueue()
-            setInterval(() => {
-                this.now = Date.now()
-            }, 1000)
+            setInterval(() => {this.now = Date.now()}, 1000)
             this.initWebSocket()
         }
     }
