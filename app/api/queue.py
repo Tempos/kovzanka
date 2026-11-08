@@ -1,21 +1,14 @@
 from datetime import datetime, timedelta, timezone
 from typing import List
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi import WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
-from app.api.auth import verify_kasa1
-from app.api.auth import verify_kasa2
-from app.db import DBSession
-from app.db import get_db
+from app.api.auth import verify_kasa1, verify_kasa2
+from app.db import DBSession, get_db
 from app.inventory import calculate_live_inventory
-from app.models import QueueItem, QueueStatus
-from app.models import SkateInventory
-from app.schemas import CreateQueueRequest, UserStatusResponse, QueueItemResponse, ExtendSessionRequest
-from app.schemas import InventoryItemCreate
+from app.models import QueueItem, QueueStatus, SkateInventory
+from app.schemas import CreateQueueRequest, ExtendSessionRequest, InventoryItemCreate, InventoryUpdatePayload, QueueItemResponse, UserStatusResponse
 from app.ws_manager import manager
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
@@ -38,12 +31,6 @@ async def create_inventory_item(payload: InventoryItemCreate, db: Session = Depe
 
     await manager.broadcast("INVENTORY_UPDATED")
     return item
-
-
-class InventoryUpdatePayload(BaseModel):
-    size: str
-    total_stock: Optional[int] = None
-    maintenance_count: Optional[int] = None
 
 
 @router.patch("/inventory", dependencies=[Depends(verify_kasa2)])

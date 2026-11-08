@@ -1,9 +1,7 @@
 from datetime import datetime
-from typing import List, Any
-from typing import Optional
+from typing import Any, List, Optional
 
-from pydantic import BaseModel
-from pydantic import ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models import QueueStatus
 
@@ -23,6 +21,12 @@ class InventoryItemCreate(BaseModel):
     size: str
     total_stock: int
     maintenance_count: int = 0
+
+
+class InventoryUpdatePayload(BaseModel):
+    size: str
+    total_stock: Optional[int] = None
+    maintenance_count: Optional[int] = None
 
 
 class InventoryItemUpdate(BaseModel):

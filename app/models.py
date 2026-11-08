@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import JSON, DateTime, Enum, Integer, String, Column
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
+from sqlalchemy import Column, DateTime, Enum, Integer, JSON, String
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
@@ -18,6 +18,12 @@ class SkateInventory(Base):
     size = Column(String, unique=True, index=True, nullable=False)  # e.g., "26", "38_hok"
     total_stock = Column(Integer, default=0, nullable=False)
     maintenance_count = Column(Integer, default=0, nullable=False)
+
+    def __init__(self, size: str, total_stock: int = 0, maintenance_count: int = 0, **kwargs):
+        super().__init__(**kwargs)
+        self.size = size
+        self.total_stock = total_stock
+        self.maintenance_count = maintenance_count
 
 
 class QueueStatus(str, enum.Enum):
