@@ -42,28 +42,32 @@ function inventory(config = {}) {
         },
 
         async addSize() {
-            if (!this.newSize) return
+            if (!this.newSize.trim()) return
+
+            const raw = this.newSize.trim()
+            let formattedSize = raw
+            if (!raw.includes('(')) {formattedSize = this.newCategory === 'hockey' ? `${raw} (хок)` : `${raw} (фігурні)`}
+
             try {
                 const res = await fetch("/api/inventory", {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        size: this.newSize,
+                        size: formattedSize,
                         total_stock: Number(this.newTotal),
                         maintenance_count: 0
                     })
                 })
                 if (res.ok) {
                     this.newSize = ''
+                    this.newCategory = 'figure'
                     this.newTotal = 1
                     await this.fetchInventory()
                 } else {
                     const err = await res.json()
                     alert(err.detail || "Помилка при додаванні розміру")
                 }
-            } catch (e) {
-                console.error("Помилка додавання:", e)
-            }
+            } catch (e) {console.error("Помилка додавання:", e)}
         },
 
         async updateStock(size, totalStock, maintenanceCount) {
@@ -87,6 +91,18 @@ function inventory(config = {}) {
                 const res = await fetch(`/api/inventory?size=${encodeURIComponent(size)}`, {method: 'DELETE'})
                 if (res.ok) {await this.fetchInventory()}
             } catch (e) {console.error("Помилка видалення:", e)}
+        },
+
+        parseSizeNum(key) {
+            const match = String(key).match(/^(\d+)/)
+            return match ? match[1] : key
+        },
+        parseSizeCat(key) {
+            const lower = String(key).toLowerCase()
+            if (lower.includes('хок') || lower.includes('hok')) return '(хок.)'
+            if (lower.includes('фіг')) return '(фіг.)'
+            const match = String(key).match(/\((.*?)\)/)
+            return match ? `(${match[1]})` : ''
         },
 
         formatCountdown(targetTimestamp, currentTime) {

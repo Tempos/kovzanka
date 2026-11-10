@@ -93,6 +93,7 @@ function formatSizesSummary(sizes, maxChars = 21) {
 }
 
 // --- MIXINS ---
+
 function inventoryMixin() {
     return {
         inventory: {},
@@ -169,7 +170,7 @@ function formatSizeKey(key) {
     return `${num} (${shortCat})`
 }
 
-function formatSizesSummary(sizes, maxChars = 40) {
+function formatSizesSummary(sizes, maxChars = 30) {
     if (typeof sizes === "string") {
         try {sizes = JSON.parse(sizes)} catch (e) {sizes = sizes ? [sizes] : []}
     }
@@ -179,31 +180,10 @@ function formatSizesSummary(sizes, maxChars = 40) {
     const counts = {}
     for (const s of sizes) counts[s] = (counts[s] || 0) + 1
 
-    const entries = Object.entries(counts).sort((a, b) =>
-        a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' })
-    )
-
-    const groupStrs = entries.map(([s, count]) => {
+    const groupStrs = Object.entries(counts).map(([s, count]) => {
         const formatted = formatSizeKey(s)
         return count > 1 ? `${formatted}×${count}` : `${formatted}`
     })
 
-    let shown = 0, len = 0
-    while (shown < groupStrs.length) {
-        const addLen = (shown === 0 ? groupStrs[shown].length : 2 + groupStrs[shown].length)
-        const remainingAfter = groupStrs.length - shown - 1
-        const shownPeopleIfAdded = entries.slice(0, shown + 1).reduce((sum, [_, c]) => sum + c, 0)
-        const tailLen = remainingAfter > 0 ? 1 + String(sizes.length - shownPeopleIfAdded).length : 0
-        if (len + addLen + tailLen > maxChars) break
-        len += addLen
-        shown++
-    }
-
-    const parts = groupStrs.slice(0, shown)
-    if (shown < groupStrs.length) {
-        const shownPeople = entries.slice(0, shown).reduce((sum, [_, c]) => sum + c, 0)
-        parts.push(`+${sizes.length - shownPeople}`)
-    }
-
-    return parts.join(", ")
+    return groupStrs.join(", ")
 }

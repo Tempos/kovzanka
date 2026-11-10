@@ -48,6 +48,21 @@
                     Наявність ковзанів
                 </button>
             </div>
+
+            <!-- Tabs Navigation -->
+            <div class="flex bg-slate-100 p-1 rounded-xl mb-4 border border-slate-200">
+                <button type="button" @click="activeTab = 'figure'"
+                        :class="activeTab === 'figure' ? 'bg-white text-blue-600 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+                        class="flex-1 py-2 text-center text-sm transition rounded-lg">
+                    ⛸️ Фігурні
+                </button>
+                <button type="button" @click="activeTab = 'hockey'"
+                        :class="activeTab === 'hockey' ? 'bg-white text-blue-600 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+                        class="flex-1 py-2 text-center text-sm transition rounded-lg">
+                    🏒 Хокейні
+                </button>
+            </div>
+
             <div class="flex justify-between items-center mb-2">
                 <div class="text-[11px] text-slate-400 font-mono">💡 ЛКМ: додати пару • ПКМ: видалити пару</div>
                 <button @click="clearSizes()" class="text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100
@@ -58,7 +73,7 @@
 
            <!-- Сітка кнопок -->
             <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200">
-                <template x-for="(data, size) in inventory" :key="size">
+                <template x-for="(data, size) in filteredInventory" :key="size">
                     <button type="button" @click="addSize(size)" @contextmenu.prevent="removeSize(size)"
                             :class="getSizeCount(size) > 0 ? 'size-btn-active'
                                 : (data.available > 0 ? 'size-btn-idle' : 'bg-red-50 text-red-900 border-red-200/60 hover:bg-red-100/50')"
@@ -126,8 +141,7 @@
                 Розміри: <span class="font-bold" x-text="createdTicket.shoe_sizes.join(', ')"></span>
             </div>
             <p class="text-xs text-slate-400">Лінк статусу:
-                <a :href="statusLink(createdTicket)" class="underline text-blue-600 font-mono"
-                   target="_blank" x-text="statusLink(createdTicket)"></a>
+                <a :href="statusLink(createdTicket)" class="underline text-blue-600 font-mono" target="_blank" x-text="statusLink(createdTicket)"></a>
             </p>
         </div>
     </template>
