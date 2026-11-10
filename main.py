@@ -21,9 +21,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/openapi.json", include_in_schema=False)
-def get_openapi_endpoint(worker_session: str = Cookie(None)):
-    # Replace this with your actual worker session validation function or import it
-    if not auth.is_authenticated_worker(worker_session):
+def get_openapi_endpoint(kasa1_session: str = Cookie(None), kasa2_session: str = Cookie(None)):
+    session = kasa1_session or kasa2_session
+    if not auth.is_authenticated_worker(session):
         raise HTTPException(status_code=401, detail="Unauthorized")
     return get_openapi(
         title=app.title, version=app.version, routes=app.routes
@@ -32,8 +32,9 @@ def get_openapi_endpoint(worker_session: str = Cookie(None)):
 
 # 3. Custom Protected Swagger UI Docs
 @app.get("/docs", include_in_schema=False)
-def custom_swagger_ui(request: Request, worker_session: str = Cookie(None)):
-    if not auth.is_authenticated_worker(worker_session):
+def custom_swagger_ui(request: Request, kasa1_session: str = Cookie(None), kasa2_session: str = Cookie(None)):
+    session = kasa1_session or kasa2_session
+    if not auth.is_authenticated_worker(session):
         return RedirectResponse(url="/login?next=/docs", status_code=303)
     return get_swagger_ui_html(openapi_url="/openapi.json", title="API Docs - Персонал")
 
