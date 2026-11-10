@@ -17,7 +17,7 @@
     <nav class="ak-nav" aria-label="Головна навігація"><a href="/">Для гостей</a><a href="/staff">Персонал</a><a href="/kasa1">Реєстрація</a><a href="/kasa2">Видача</a><a href="/inventory">Залишки</a><a href="/docs">API</a></nav>
 </header>
 <main class="ak-page">
-<div class="max-w-6xl mx-auto">
+<div class="w-full px-4 sm:px-8">
     <!-- Шапка -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 text-center sm:text-left w-full sm:w-auto">Каса №2: Видача ковзанів</h1>
@@ -36,8 +36,11 @@
     </div>
 
     <!-- Таблиця черги -->
+    <!-- Main Queue Card Container (Wraps BOTH tables together) -->
     <div class="bg-white rounded-lg shadow overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 border-collapse">
+
+        <!-- 1. Top Active Queue Table -->
+        <table class="w-full divide-y divide-gray-200 border-collapse">
             <thead class="bg-gray-50">
             <tr>
                 <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">№</th>
@@ -49,46 +52,33 @@
             </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-            <template :key="item.id" x-for="item in queue">
+            <template :key="item.id" x-for="item in activeQueue">
                 <tr class="hover:bg-gray-50 transition-colors">
-                    <!--TICKET-->
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-base sm:text-lg font-bold text-gray-900" x-text="'#' + item.ticket_number"></td>
-
-                    <!--PHONE / COMMENT-->
                     <td class="px-3 sm:px-4 py-3 align-middle">
                         <div class="font-mono font-bold text-slate-900 leading-tight whitespace-nowrap text-xs sm:text-sm" x-text="formatPhone(item.phone)"></div>
                         <template x-if="item.comment">
-                            <div :title="item.comment" class="mt-1 text-xs text-amber-800 bg-amber-50 px-1.5 py-0.5
-                            rounded border border-amber-200/60 max-w-[160px] truncate cursor-help leading-tight">
+                            <div :title="item.comment" class="mt-1 text-xs text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 max-w-[160px] truncate cursor-help leading-tight">
                                 💬 <span x-text="item.comment"></span>
                             </div>
                         </template>
                     </td>
-
-                    <!--SIZES-->
-                    <td class="px-2 py-3 min-w-[130px] sm:min-w-[160px]">
+                    <td class="px-2 py-3 min-w-[150px] sm:min-w-[180px]">
                         <div class="flex flex-wrap gap-1">
                             <template x-for="(size, idx) in item.shoe_sizes" :key="idx">
-                                <span class="w-7 h-7 flex items-center justify-center bg-slate-100 text-slate-800 text-xs font-bold rounded border border-slate-200 shrink-0">
-                                    <span x-text="size"></span>
+                                <span class="px-2 py-1 flex items-center justify-center bg-slate-100 text-slate-800 text-xs font-bold rounded border border-slate-200 shrink-0">
+                                    <span x-text="formatSizeKey ? formatSizeKey(size) : size"></span>
                                 </span>
                             </template>
                         </div>
                     </td>
-
-                    <!--TIME-->
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-mono font-bold">
                         <div class="flex flex-col">
-                            <!-- Live: counts down while serving, otherwise shows ordered duration -->
                             <span :class="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && item.session_end ? 'text-blue-700' : 'text-gray-600'"
                                   x-text="getTimeDisplay(item)"></span>
-
-                            <!-- Target End Time -->
                             <template x-if="item.session_end">
                                 <span class="text-xs text-blue-600" x-text="'до ' + formatTime(item.session_end)"></span>
                             </template>
-
-                            <!-- Overtime Badge: ticks up live once session_end has passed -->
                             <template x-if="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && getOverdueTime(item.session_end)">
                                 <span :title="'Протерміновано на ' + getOverdueTime(item.session_end)"
                                       class="mt-1 inline-flex items-center w-max px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 animate-pulse cursor-help">
@@ -97,72 +87,96 @@
                             </template>
                         </div>
                     </td>
-
-                    <!--STATUS-->
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
                         <span :class="{
                                   'bg-yellow-100 text-yellow-800': item.status === 'ЧЕКАЄ',
                                   'bg-green-100 text-green-800': item.status === 'ВИКЛИКАЄТЬСЯ',
-                                  'bg-blue-100 text-blue-800': item.status === 'ОБСЛУГОВУЄТЬСЯ',
-                                  'bg-purple-100 text-purple-800': item.status === 'ПОВЕРНЕНО',
-                                  'bg-red-100 text-red-800': item.status === 'СКАСОВАНО'
+                                  'bg-blue-100 text-blue-800': item.status === 'ОБСЛУГОВУЄТЬСЯ'
                               }"
                               class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
                               x-text="item.status">
                         </span>
                     </td>
-
-                    <!-- BUTTONS -->
                     <td class="px-3 sm:px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="inline-flex items-center justify-end gap-1.5 flex-wrap">
-
-                            <!-- Якщо чекає -->
                             <template x-if="item.status === 'ЧЕКАЄ'">
-                                <button @click="changeStatus(item.id, 'ВИКЛИКАЄТЬСЯ')"
-                                        class="bg-green-600 hover:bg-green-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition">
-                                    Викликати
-                                </button>
+                                <button @click="changeStatus(item.id, 'ВИКЛИКАЄТЬСЯ')" class="bg-green-600 hover:bg-green-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition">Викликати</button>
                             </template>
-
-                            <!-- Якщо викликаний -->
                             <template x-if="item.status === 'ВИКЛИКАЄТЬСЯ'">
-                                <button @click="changeStatus(item.id, 'ОБСЛУГОВУЄТЬСЯ')"
-                                        class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition">
-                                    Видати ковзани
-                                </button>
+                                <button @click="changeStatus(item.id, 'ОБСЛУГОВУЄТЬСЯ')" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition">Видати ковзани</button>
                             </template>
-
-                            <!-- Якщо катається -->
                             <template x-if="item.status === 'ОБСЛУГОВУЄТЬСЯ'">
                                 <div class="inline-flex gap-1">
-                                    <button @click="extendSession(item.id, 15)"
-                                            class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2 py-1 rounded text-xs transition">
-                                        +15 хв
-                                    </button>
-                                    <button @click="changeStatus(item.id, 'ПОВЕРНЕНО')"
-                                            class="bg-purple-600 hover:bg-purple-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition">
-                                        Прийняти
-                                    </button>
+                                    <button @click="extendSession(item.id, 15)" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2 py-1 rounded text-xs transition">+15 хв</button>
+                                    <button @click="changeStatus(item.id, 'ПОВЕРНЕНО')" class="bg-purple-600 hover:bg-purple-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition">Прийняти</button>
                                 </div>
                             </template>
-
-                            <!-- Завжди доступне скасування для активних -->
-                            <template x-if="item.status !== 'ПОВЕРНЕНО' && item.status !== 'СКАСОВАНО'">
-                                <button @click="changeStatus(item.id, 'СКАСОВАНО')"
-                                        class="bg-gray-200 hover:bg-red-600 hover:text-white text-gray-700 px-2 py-1 rounded text-xs transition"
-                                        title="Скасувати">
-                                    ✕
+                            <template x-if="item.status !== 'ЧЕКАЄ'">
+                                <button @click="revertStatus(item.id)" class="bg-gray-600 hover:bg-gray-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition" title="Відкотити попередню дію">
+                                    ↩️
                                 </button>
                             </template>
-
+                            <button @click="confirmCancel(item.id)" class="bg-gray-200 hover:bg-red-600 hover:text-white text-gray-700 px-2 py-1 rounded text-xs transition" title="Скасувати">✕</button>
                         </div>
                     </td>
                 </tr>
             </template>
             </tbody>
         </table>
-        <template x-if="queue.length === 0">
+        <template x-if="activeQueue.length === 0">
             <div class="text-center py-8 text-gray-500">Активних квитків у черзі немає</div>
+        </template>
+
+        <!-- 2. Bottom Recently Closed Table (Shared inside the exact same scroll container) -->
+        <template x-if="closedQueue.length > 0">
+            <div class="border-t-2 border-gray-200 mt-4 pt-4">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-6">
+                    ↩️ Нещодавно завершені / скасовані (останні 5)
+                </h3>
+                <table class="w-full divide-y divide-gray-200 border-collapse opacity-85">
+                    <tbody class="bg-white divide-y divide-gray-200">
+                    <template :key="item.id" x-for="item in closedQueue">
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-base sm:text-lg font-bold text-gray-900" x-text="'#' + item.ticket_number"></td>
+                            <td class="px-3 sm:px-4 py-3 align-middle">
+                                <div class="font-mono font-bold text-slate-900 leading-tight whitespace-nowrap text-xs sm:text-sm" x-text="formatPhone(item.phone)"></div>
+                                <template x-if="item.comment">
+                                    <div :title="item.comment" class="mt-1 text-xs text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 max-w-[160px] truncate cursor-help leading-tight">
+                                        💬 <span x-text="item.comment"></span>
+                                    </div>
+                                </template>
+                            </td>
+                            <td class="px-2 py-3 min-w-[150px] sm:min-w-[180px]">
+                                <div class="flex flex-wrap gap-1">
+                                    <template x-for="(size, idx) in item.shoe_sizes" :key="idx">
+                                        <span class="px-2 py-1 flex items-center justify-center bg-slate-100 text-slate-800 text-xs font-bold rounded border border-slate-200 shrink-0">
+                                            <span x-text="formatSizeKey ? formatSizeKey(size) : size"></span>
+                                        </span>
+                                    </template>
+                                </div>
+                            </td>
+                            <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-mono font-bold text-gray-600">
+                                <span x-text="item.duration_minutes ? item.duration_minutes + ' хв' : '—'"></span>
+                            </td>
+                            <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                <span :class="{
+                                          'bg-purple-100 text-purple-800': item.status === 'ПОВЕРНЕНО',
+                                          'bg-red-100 text-red-800': item.status === 'СКАСОВАНО'
+                                      }"
+                                      class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                      x-text="item.status">
+                                </span>
+                            </td>
+                            <td class="px-3 sm:px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button @click="revertStatus(item.id)" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-xs font-bold transition inline-flex items-center gap-1">
+                                    ↩️ Відкотити
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                    </tbody>
+                </table>
+            </div>
         </template>
     </div>
 </div>

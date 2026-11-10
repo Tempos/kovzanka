@@ -56,26 +56,28 @@
                 </button>
             </div>
 
-            <!-- Сітка кнопок -->
-            <div class="grid grid-cols-5 sm:grid-cols-8 gap-2 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200">
+           <!-- Сітка кнопок -->
+            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200">
                 <template x-for="(data, size) in inventory" :key="size">
-                    <button type="button" @click="addSize(Number(size))" @contextmenu.prevent="removeSize(Number(size))"
-                            :class="getSizeCount(Number(size)) > 0 ? 'size-btn-active'
+                    <button type="button" @click="addSize(size)" @contextmenu.prevent="removeSize(size)"
+                            :class="getSizeCount(size) > 0 ? 'size-btn-active'
                                 : (data.available > 0 ? 'size-btn-idle' : 'bg-red-50 text-red-900 border-red-200/60 hover:bg-red-100/50')"
-                            class="size-btn relative flex flex-col items-center justify-center rounded-xl border text-center transition select-none cursor-pointer min-w-0">
+                            class="size-btn relative flex flex-col items-center justify-center rounded-xl border text-center transition select-none cursor-pointer min-w-0 py-2">
 
                         <!-- Номер розміру -->
-                        <span class="text-base sm:text-lg font-black tracking-tight font-mono" x-text="size"></span>
+                        <span class="text-base sm:text-lg font-black tracking-tight font-mono" x-text="parseSizeNum(size)"></span>
+                        <!-- Категорія -->
+                        <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-tighter" x-text="parseSizeCat(size)"></span>
 
                         <!-- Живий індикатор залишку -->
                         <span class="text-[9px] sm:text-[10px] font-bold mt-0.5 tracking-tighter whitespace-nowrap"
-                              :class="getSizeCount(Number(size)) > 0 ? 'text-blue-100' : (data.available > 0 ? 'text-slate-400' : 'text-red-500 font-extrabold')"
-                              x-text="Math.max(0, data.available - getSizeCount(Number(size))) + '/' + data.total">
+                              :class="getSizeCount(size) > 0 ? 'text-blue-100' : (data.available > 0 ? 'text-slate-400' : 'text-red-500 font-extrabold')"
+                              x-text="Math.max(0, data.available - getSizeCount(size)) + '/' + data.total">
                         </span>
 
                         <!-- Помаранчевий круглий лічильник кількості обраних пар -->
                         <span class="absolute -top-2 -right-2 bg-amber-500 text-slate-950 text-xs font-black w-5 h-5 rounded-full flex items-center justify-center border border-white"
-                              x-show="getSizeCount(Number(size)) > 0" x-text="getSizeCount(Number(size))">
+                              x-show="getSizeCount(size) > 0" x-text="getSizeCount(size)">
                         </span>
 
                         <!-- Індикатор часу повернення (якщо 0 на складі) -->

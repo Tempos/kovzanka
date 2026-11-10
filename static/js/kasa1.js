@@ -29,19 +29,26 @@ function kasa1() {
             try {
                 const res = await fetch("/api/inventory")
                 if (res.ok) {
-                    const data = await res.json()
+                    const rawData = await res.json()
                     if (requestId === this.inventoryRequestId) {
-                        this.inventory = data
-                        this.inventoryError = false // Clear error on success
+                        // Природне сортування ключів (числа на початок, потім текст)
+                        const sortedKeys = Object.keys(rawData).sort((a, b) =>
+                            a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+                        )
+
+                        const sortedInventory = {}
+                        sortedKeys.forEach(key => {sortedInventory[key] = rawData[key]})
+
+                        this.inventory = sortedInventory
+                        this.inventoryError = false
                     }
-                    // Mark error on bad response
                 } else if (requestId === this.inventoryRequestId) {this.inventoryError = true}
             } catch (e) {
                 console.error("Помилка оновлення залишків ковзанів:", e)
-                // Mark error on network catch
                 if (requestId === this.inventoryRequestId) {this.inventoryError = true}
             }
         },
+
         async retryInventory() {
             this.inventoryError = false
             await this.fetchInventory()
@@ -88,6 +95,7 @@ function kasa1() {
             this.durationMinutes = 60
             this.comment = ""
         },
+
         async submitForm() {
             if (!this.canSubmit) return
 
@@ -96,19 +104,36 @@ function kasa1() {
 
             try {
                 const response = await fetch("/api/queue", {
-                    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
                         phone: fullPhone,
                         shoe_sizes: this.shoeSizes,
                         duration_minutes: this.durationMinutes,
                         comment: this.comment || null
                     })
                 })
-                if (!response.ok) return
+                if (!response.ok) {
+                    const errorBody = await response.text()
+                    console.error("Помилка сервера:", response.status, errorBody)
+                    return
+                }
 
                 this.createdTicket = await response.json()
                 this.createdTicket.phone = displayPhone
                 this.resetForm()
             } catch (e) {console.error("Помилка створення квитка:", e)}
+        },
+
+        parseSizeNum(key) {
+            const match = String(key).match(/^(\d+)/)
+            return match ? match[1] : key
+        },
+        parseSizeCat(key) {
+            const match = String(key).match(/\((.*?)\)/)
+            if (!match) return ""
+            const cat = match[1]
+            return cat.startsWith("фіг") ? "фіг." : (cat.startsWith("хок") ? "хок." : cat)
         },
 
         async init() {

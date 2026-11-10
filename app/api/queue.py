@@ -1,18 +1,64 @@
 from datetime import datetime, timedelta, timezone
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
-from app.api.auth import verify_worker
+from app.api.auth import verify_kasa1, verify_kasa2
 from app.db import DBSession, get_db
 from app.inventory import calculate_live_inventory
-from app.models import QueueItem, QueueStatus
-from app.schemas import CreateQueueRequest, UserStatusResponse, QueueItemResponse, ExtendSessionRequest
+from app.models import QueueItem, QueueStatus, SkateInventory
+from app.schemas import CreateQueueRequest, ExtendSessionRequest, InventoryItemCreate, InventoryUpdatePayload, QueueItemResponse, UserStatusResponse
 from app.ws_manager import manager
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
+
+
+@router.post("/inventory", dependencies=[Depends(verify_kasa2)])
+async def create_inventory_item(payload: InventoryItemCreate, db: Session = Depends(get_db)):
+    existing = db.query(SkateInventory).filter(SkateInventory.size == payload.size).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Такий розмір вже існує в базі")
+
+    item = SkateInventory(
+        size=payload.size,
+        total_stock=payload.total_stock,
+        maintenance_count=payload.maintenance_count
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+
+    await manager.broadcast("INVENTORY_UPDATED")
+    return item
+
+
+@router.patch("/inventory", dependencies=[Depends(verify_kasa2)])
+async def update_inventory_item(payload: InventoryUpdatePayload, db: Session = Depends(get_db)):
+    item = db.query(SkateInventory).filter(SkateInventory.size == payload.size).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Розмір не знайдено")
+
+    if payload.total_stock is not None:
+        item.total_stock = max(0, payload.total_stock)
+    if payload.maintenance_count is not None:
+        item.maintenance_count = max(0, payload.maintenance_count)
+
+    db.commit()
+    await manager.broadcast("INVENTORY_UPDATED")
+    return item
+
+
+@router.delete("/inventory", dependencies=[Depends(verify_kasa2)])
+async def delete_inventory_item(size: str, db: Session = Depends(get_db)):
+    item = db.query(SkateInventory).filter(SkateInventory.size == size).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Розмір не знайдено")
+
+    db.delete(item)
+    db.commit()
+    await manager.broadcast("INVENTORY_UPDATED")
+    return {"success": True}
 
 
 @router.get("/inventory")
@@ -25,7 +71,26 @@ def get_inventory_status(db: Session = Depends(get_db)):
             QueueStatus.SERVED
         ])
     ).all()
-    return calculate_live_inventory(active_skaters)
+
+    live_inventory = calculate_live_inventory(active_skaters)
+    db_inventory = db.query(SkateInventory).all()
+
+    # Ensure every size from the database table appears in the inventory view,
+    # and include maintenance_count so frontend buttons work correctly.
+    for item in db_inventory:
+        if item.size not in live_inventory:
+            live_inventory[item.size] = {
+                "total": item.total_stock,
+                "in_use": 0,
+                "available": max(0, item.total_stock - item.maintenance_count),
+                "in_queue": 0,
+                "target_timestamp": None
+            }
+        # Attach maintenance_count and ensure total stock matches the database
+        live_inventory[item.size]["maintenance_count"] = item.maintenance_count
+        live_inventory[item.size]["total"] = item.total_stock
+
+    return live_inventory
 
 
 @router.websocket("/ws/queue")
@@ -40,7 +105,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @router.get("/queue", response_model=List[QueueItemResponse])
 def get_full_queue(db: DBSession):
-    return (  # Повертаємо тільки ті талони, які ще в процесі
+    active_items = (
         db.query(QueueItem)
         .filter(QueueItem.status.in_([
             QueueStatus.WAITING,
@@ -51,8 +116,21 @@ def get_full_queue(db: DBSession):
         .all()
     )
 
+    recent_closed = (
+        db.query(QueueItem)
+        .filter(QueueItem.status.in_([
+            QueueStatus.RETURNED,
+            QueueStatus.CANCELLED
+        ]))
+        .order_by(QueueItem.id.desc())
+        .limit(5)
+        .all()
+    )
 
-@router.post("/queue", response_model=QueueItemResponse)
+    return active_items + recent_closed
+
+
+@router.post("/queue", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa1)])
 async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
     last_ticket = db.query(QueueItem).order_by(QueueItem.id.desc()).first()
     next_number = (last_ticket.ticket_number + 1) if last_ticket else 101
@@ -91,7 +169,7 @@ async def update_status(item_id: int, status: QueueStatus, db: DBSession):
     return item
 
 
-@router.patch("/queue/{item_id}/extend", response_model=QueueItemResponse, dependencies=[Depends(verify_worker)])
+@router.patch("/queue/{item_id}/extend", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
 async def extend_session(item_id: int, payload: ExtendSessionRequest, db: Session = Depends(get_db)):
     if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
@@ -133,7 +211,7 @@ def get_user_status(tracking_token: str, db: DBSession):
 
 @router.get("/public/status/ticket/{ticket}", response_model=UserStatusResponse)
 def get_user_status_by_ticket(ticket: int, db: DBSession):
-    if not (item:= (db.query(QueueItem).filter(QueueItem.ticket_number == ticket).first())):
+    if not (item := (db.query(QueueItem).filter(QueueItem.ticket_number == ticket).first())):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
 
     position = 0
@@ -152,3 +230,26 @@ def get_user_status_by_ticket(ticket: int, db: DBSession):
         position_in_queue=position,
         estimated_wait_minutes=position * 5,
     )
+
+
+@router.post("/queue/{ticket_id}/revert", dependencies=[Depends(verify_kasa2)])
+def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
+    ticket = db.query(QueueItem).filter(QueueItem.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    # Step backward through the workflow states
+    if ticket.status == QueueStatus.RETURNED:
+        ticket.status = QueueStatus.SERVED
+    elif ticket.status == QueueStatus.SERVED:
+        ticket.status = QueueStatus.CALLING
+    elif ticket.status == QueueStatus.CALLING:
+        ticket.status = QueueStatus.WAITING
+    elif ticket.status == QueueStatus.CANCELLED:
+        ticket.status = QueueStatus.WAITING
+    else:
+        raise HTTPException(status_code=400, detail="Цей статус не можна відкотити")
+
+    db.commit()
+    db.refresh(ticket)
+    return ticket
