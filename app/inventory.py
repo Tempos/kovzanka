@@ -1,27 +1,38 @@
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-SKATE_INVENTORY_STOCK: Dict[str, int] = {}
-for size in range(26, 49):
-    SKATE_INVENTORY_STOCK[f"{size} (фігурні)"] = 5
-    SKATE_INVENTORY_STOCK[f"{size} (хокейні)"] = 5
+from app.models import SkateInventory
 
 
-def calculate_live_inventory(active_items: List[Any]) -> Dict[str, Dict[str, Any]]:
-    """Computes real-time availability, queue counts, and turn-around times with target timestamps."""
+def init_inventory_db(db_session):
+    for size in range(26, 46):
+        for category in ["фігурні", "хокейні"]:
+            size_name = f"{size} ({category})"
+
+            # Check if this specific size already exists
+            if not (exists := db_session.query(SkateInventory).filter(SkateInventory.size == size_name).first()):
+                db_session.add(SkateInventory(size=size_name, total_stock=10, maintenance_count=0))
+
+    db_session.commit()
+
+
+def calculate_live_inventory(active_items: List[Any], db_inventory_records: List[Any]) -> Dict[str, Dict[str, Any]]:
+    """Computes real-time availability from actual database records."""
     current_time = datetime.now(timezone.utc)
 
-    inventory: Dict[str, Dict[str, Any]] = {
-        size_key: {
-            "total": total,
+    # Build inventory dictionary dynamically from database rows
+    inventory: Dict[str, Dict[str, Any]] = {}
+    for record in db_inventory_records:
+        m_count = getattr(record, "maintenance_count", 0)
+        inventory[record.size] = {
+            "total": record.total_stock,
+            "maintenance_count": m_count,
             "in_use": 0,
             "in_queue": 0,
-            "available": total,
+            "available": record.total_stock - m_count,
             "target_timestamp": None,
             "next_available_in_mins": None,
         }
-        for size_key, total in SKATE_INVENTORY_STOCK.items()
-    }
 
     for item in active_items:
         status_val = item.status.value if hasattr(item.status, "value") else str(item.status)
@@ -64,7 +75,7 @@ def calculate_live_inventory(active_items: List[Any]) -> Dict[str, Dict[str, Any
                 size_end_times[size_key].append(end_time)
 
     for size_key, inv in inventory.items():
-        inv["available"] = max(0, inv["total"] - inv["in_use"])
+        inv["available"] = max(0, inv["total"] - inv["in_use"] - inv["maintenance_count"])
         deficit = inv["in_queue"] - inv["available"]
 
         if deficit > 0 and size_key in size_end_times:

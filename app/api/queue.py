@@ -72,8 +72,8 @@ def get_inventory_status(db: Session = Depends(get_db)):
         ])
     ).all()
 
-    live_inventory = calculate_live_inventory(active_skaters)
     db_inventory = db.query(SkateInventory).all()
+    live_inventory = calculate_live_inventory(active_skaters, db_inventory)
 
     # Ensure every size from the database table appears in the inventory view,
     # and include maintenance_count so frontend buttons work correctly.
