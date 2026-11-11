@@ -5,6 +5,7 @@ function inventory(config = {}) {
         wsConnected: false,
         now: Math.floor(Date.now() / 1000),
         newSize: '',
+        newCategory: 'figure',
         newTotal: 1,
 
         get wsStatus() {return getWsStatus(this.wsConnected)},
@@ -46,7 +47,7 @@ function inventory(config = {}) {
 
             const raw = this.newSize.trim()
             let formattedSize = raw
-            if (!raw.includes('(')) {formattedSize = this.newCategory === 'hockey' ? `${raw} (хок)` : `${raw} (фігурні)`}
+            if (!raw.includes('(')) {formattedSize = this.newCategory === 'hockey' ? `${raw} (хокейні)` : `${raw} (фігурні)`}
 
             try {
                 const res = await fetch("/api/inventory", {
@@ -71,17 +72,28 @@ function inventory(config = {}) {
         },
 
         async updateStock(size, totalStock, maintenanceCount) {
-            if (totalStock < 0 || (maintenanceCount !== undefined && maintenanceCount < 0)) return
+            if (totalStock < 0) return
+            if (maintenanceCount !== undefined && (maintenanceCount < 0 || maintenanceCount > totalStock)) {
+                alert("Кількість ковзанів на ремонті не може перевищувати загальну кількість!");
+                return;
+            }
+
             try {
                 const payload = {size: size, total_stock: totalStock}
                 if (maintenanceCount !== undefined) {payload.maintenance_count = maintenanceCount}
 
+                // Strictly issue PATCH; do not fall back to POST on 404/errors
                 const res = await fetch("/api/inventory", {
                     method: 'PATCH',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 })
+
                 if (res.ok) {await this.fetchInventory()}
+                else {
+                    const err = await res.json()
+                    alert(err.detail || "Помилка оновлення кількості")
+                }
             } catch (e) {console.error("Помилка оновлення:", e)}
         },
 

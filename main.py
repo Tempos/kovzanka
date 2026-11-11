@@ -1,10 +1,14 @@
+from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
+
+from app.inventory import init_inventory_db
 
 load_dotenv()
 from fastapi.staticfiles import StaticFiles
 
 from app.api import auth, pages, queue
-from app.db import engine
+from app.db import engine, SessionLocal
 from app.models import Base
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -16,7 +20,20 @@ from fastapi.responses import RedirectResponse
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Ice Rink Queue System API", version="1.0", docs_url=None, redoc_url=None, openapi_url=None)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+
+    db = SessionLocal()
+    try:
+        init_inventory_db(db)
+    finally:
+        db.close()
+    yield
+
+
+app = FastAPI(title="Ice Rink Queue System API", version="1.0", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -25,9 +42,7 @@ def get_openapi_endpoint(kasa1_session: str = Cookie(None), kasa2_session: str =
     session = kasa1_session or kasa2_session
     if not auth.is_authenticated_worker(session):
         raise HTTPException(status_code=401, detail="Unauthorized")
-    return get_openapi(
-        title=app.title, version=app.version, routes=app.routes
-    )
+    return get_openapi(title=app.title, version=app.version, routes=app.routes)
 
 
 # 3. Custom Protected Swagger UI Docs
