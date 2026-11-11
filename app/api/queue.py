@@ -99,7 +99,7 @@ async def delete_inventory_item(size: str, db: Session = Depends(get_db)):
     if not (item := db.query(SkateInventory).filter(SkateInventory.size == size).first()):
         raise HTTPException(status_code=404, detail="Розмір не знайдено")
 
-    db.delete(item)
+    item.is_deleted = True
     db.commit()
     await manager.broadcast("INVENTORY_UPDATED")
     return {"success": True}

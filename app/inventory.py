@@ -7,14 +7,16 @@ from app.models import SkateInventory
 
 
 def init_inventory_db(db_session):
-    """Ensures all default sizes (26-48, both categories) exist without overwriting existing data."""
+    """Ensures all default sizes exist, respecting intentional deletions."""
     try:
-        for size in range(26, 49):  # Sizes 26 to 48 inclusive
+        for size in range(26, 49):
             for category in ["фігурні", "хокейні"]:
                 size_name = f"{size} ({category})"
-                # Check if this specific size already exists in the DB
-                if not db_session.query(SkateInventory).filter(SkateInventory.size == size_name).first():
-                    db_session.add(SkateInventory(size=size_name, total_stock=10, maintenance_count=0))
+
+                if not (existing := db_session.query(SkateInventory).filter(SkateInventory.size == size_name).first()):
+                    db_session.add(SkateInventory(size=size_name,total_stock=10,maintenance_count=0,is_deleted=False))
+                elif existing.is_deleted:
+                    continue  # Skip recreating sizes that were explicitly deleted by an admin
         db_session.commit()
     except IntegrityError:
         db_session.rollback()
@@ -46,6 +48,8 @@ def _build_base_inventory(db_inventory_records: List[Any]) -> Dict[str, Dict[str
     """Builds initial inventory dictionary dynamically from database rows."""
     inventory: Dict[str, Dict[str, Any]] = {}
     for record in db_inventory_records:
+        if getattr(record, "is_deleted", False):
+            continue
         m_count = getattr(record, "maintenance_count", 0)
         inventory[record.size] = {
             "total": record.total_stock,
