@@ -94,6 +94,4 @@ def verify_kasa2(kasa2_session: str = Cookie(None)):
         )
 
 def is_authenticated_worker(session: str) -> bool:
-    if session and (is_authenticated_kasa1(session) or is_authenticated_kasa2(session)):
-        return True
-    return False
+    return bool(session and (is_authenticated_kasa1(session) or is_authenticated_kasa2(session)))

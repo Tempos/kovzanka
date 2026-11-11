@@ -8,7 +8,8 @@ from app.api.auth import is_authenticated_kasa2, verify_kasa1, verify_kasa2
 from app.db import DBSession, get_db
 from app.inventory import calculate_live_inventory
 from app.models import QueueItem, QueueStatus, SkateInventory
-from app.schemas import CreateQueueRequest, ExtendSessionRequest, InventoryItemCreate, InventoryUpdatePayload, QueueItemResponse, UserStatusResponse
+from app.schemas import CreateQueueRequest, ExtendSessionRequest, InventoryItemCreate, InventoryUpdatePayload, \
+    QueueItemResponse, UserStatusResponse
 from app.ws_manager import manager
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
@@ -16,8 +17,7 @@ router = APIRouter(prefix="/api", tags=["API Endpoints"])
 
 @router.post("/inventory", dependencies=[Depends(verify_kasa2)])
 async def create_inventory_item(payload: InventoryItemCreate, db: Session = Depends(get_db)):
-    existing = db.query(SkateInventory).filter(SkateInventory.size == payload.size).first()
-    if existing:
+    if db.query(SkateInventory).filter(SkateInventory.size == payload.size).first():
         raise HTTPException(status_code=400, detail="Такий розмір вже існує в базі")
 
     item = SkateInventory(
@@ -35,8 +35,7 @@ async def create_inventory_item(payload: InventoryItemCreate, db: Session = Depe
 
 @router.patch("/inventory", dependencies=[Depends(verify_kasa2)])
 async def update_inventory_item(payload: InventoryUpdatePayload, db: Session = Depends(get_db)):
-    item = db.query(SkateInventory).filter(SkateInventory.size == payload.size).first()
-    if not item:
+    if not (item := db.query(SkateInventory).filter(SkateInventory.size == payload.size).first()):
         raise HTTPException(status_code=404, detail="Розмір не знайдено")
 
     new_total = payload.total_stock if payload.total_stock is not None else item.total_stock
@@ -97,8 +96,7 @@ def get_inventory_status(request: Request, db: Session = Depends(get_db)):
 
 @router.delete("/inventory", dependencies=[Depends(verify_kasa2)])
 async def delete_inventory_item(size: str, db: Session = Depends(get_db)):
-    item = db.query(SkateInventory).filter(SkateInventory.size == size).first()
-    if not item:
+    if not (item := db.query(SkateInventory).filter(SkateInventory.size == size).first()):
         raise HTTPException(status_code=404, detail="Розмір не знайдено")
 
     db.delete(item)
@@ -248,8 +246,7 @@ def get_user_status_by_ticket(ticket: int, db: DBSession):
 
 @router.post("/queue/{ticket_id}/revert", dependencies=[Depends(verify_kasa2)])
 def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
-    ticket = db.query(QueueItem).filter(QueueItem.id == ticket_id).first()
-    if not ticket:
+    if not (ticket := db.query(QueueItem).filter(QueueItem.id == ticket_id).first()):
         raise HTTPException(status_code=404, detail="Ticket not found")
 
     # Step backward through the workflow states

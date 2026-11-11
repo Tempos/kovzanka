@@ -54,9 +54,7 @@ class QueueItemResponse(BaseModel):
     @field_validator("shoe_sizes", mode="before")
     @classmethod
     def coerce_shoe_sizes(cls, v: Any) -> List[str]:
-        if isinstance(v, list):
-            return [str(item) for item in v]
-        return v
+        return [str(item) for item in v] if isinstance(v, list) else v
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -72,6 +70,4 @@ class UserStatusResponse(BaseModel):
     @field_validator("shoe_sizes", mode="before")
     @classmethod
     def coerce_shoe_sizes(cls, v: Any) -> List[str]:
-        if isinstance(v, list):
-            return [str(item) for item in v]
-        return v
+        return [str(item) for item in v] if isinstance(v, list) else v
