@@ -1,19 +1,26 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
+from sqlalchemy.exc import IntegrityError
+
 from app.models import SkateInventory
 
 
 def init_inventory_db(db_session):
-    for size in range(26, 46):
-        for category in ["фігурні", "хокейні"]:
-            size_name = f"{size} ({category})"
-
-            # Check if this specific size already exists
-            if not (exists := db_session.query(SkateInventory).filter(SkateInventory.size == size_name).first()):
-                db_session.add(SkateInventory(size=size_name, total_stock=10, maintenance_count=0))
-
-    db_session.commit()
+    """Initializes default skate inventory safely on fresh database creation."""
+    try:
+        if db_session.query(SkateInventory).count() == 0:
+            for size in range(26, 49):  # Sizes 26 to 48 inclusive
+                for category in ["фігурні", "хокейні"]:
+                    size_name = f"{size} ({category})"
+                    db_session.add(SkateInventory(
+                        size=size_name,
+                        total_stock=10,  # Default stock of 5 pairs
+                        maintenance_count=0
+                    ))
+            db_session.commit()
+    except IntegrityError:
+        db_session.rollback()
 
 
 def calculate_live_inventory(active_items: List[Any], db_inventory_records: List[Any]) -> Dict[str, Dict[str, Any]]:

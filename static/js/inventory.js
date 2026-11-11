@@ -72,7 +72,6 @@ function inventory(config = {}) {
         },
 
         async updateStock(size, totalStock, maintenanceCount) {
-            // Перевіряємо валідність введених чисел
             if (totalStock < 0) return
             if (maintenanceCount !== undefined && (maintenanceCount < 0 || maintenanceCount > totalStock)) {
                 alert("Кількість ковзанів на ремонті не може перевищувати загальну кількість!");
@@ -83,28 +82,15 @@ function inventory(config = {}) {
                 const payload = {size: size, total_stock: totalStock}
                 if (maintenanceCount !== undefined) {payload.maintenance_count = maintenanceCount}
 
-                // Спершу намагаємось оновити існуючий запис
-                let res = await fetch("/api/inventory", {
+                // Strictly issue PATCH; do not fall back to POST on 404/errors
+                const res = await fetch("/api/inventory", {
                     method: 'PATCH',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 })
 
-                // Якщо розміру ще немає в базі (404 або помилка), створюємо його через POST
-                if (res.status === 404 || !res.ok) {
-                    res = await fetch("/api/inventory", {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            size: size,
-                            total_stock: totalStock,
-                            maintenance_count: maintenanceCount || 0
-                        })
-                    })
-                }
-
-                if (res.ok) {await this.fetchInventory()
-                } else {
+                if (res.ok) {await this.fetchInventory()}
+                else {
                     const err = await res.json()
                     alert(err.detail || "Помилка оновлення кількості")
                 }
