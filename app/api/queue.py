@@ -211,14 +211,43 @@ def get_user_status(tracking_token: str, db: DBSession):
         .count()
     )
 
+    estimated_wait = _calculate_ticket_wait_time(item, db, position)
+
     return UserStatusResponse(
         ticket_number=item.ticket_number,
         status=item.status,
         people_count=item.people_count,
         shoe_sizes=item.shoe_sizes,
         position_in_queue=position,
-        estimated_wait_minutes=position * 5,
+        estimated_wait_minutes=estimated_wait,
     )
+
+
+def _calculate_ticket_wait_time(item: QueueItem, db: Session, position: int) -> int:
+    """Calculates wait time considering both queue position and inventory session end times."""
+    active_skaters = db.query(QueueItem).filter(
+        QueueItem.status.in_([
+            QueueStatus.WAITING,
+            QueueStatus.CALLING,
+            QueueStatus.SERVED
+        ])
+    ).all()
+    db_inventory = db.query(SkateInventory).all()
+    live_inventory = calculate_live_inventory(active_skaters, db_inventory)
+
+    max_wait = position * 5
+    for raw_size in (item.shoe_sizes or []):
+        size_key = str(raw_size)
+        if size_key not in live_inventory:
+            candidate = f"{size_key} (фігурні)"
+            if candidate in live_inventory:
+                size_key = candidate
+
+        if size_key in live_inventory:
+            mins = live_inventory[size_key].get("next_available_in_mins")
+            if mins is not None and mins > max_wait:
+                max_wait = mins
+    return max_wait
 
 
 @router.get("/public/status/ticket/{ticket}", response_model=UserStatusResponse)
@@ -234,13 +263,15 @@ def get_user_status_by_ticket(ticket: int, db: DBSession):
             .count()
         )
 
+    estimated_wait = _calculate_ticket_wait_time(item, db, position)
+
     return UserStatusResponse(
         ticket_number=item.ticket_number,
         status=item.status,
         people_count=item.people_count,
         shoe_sizes=item.shoe_sizes,
         position_in_queue=position,
-        estimated_wait_minutes=position * 5,
+        estimated_wait_minutes=estimated_wait,
     )
 
 
