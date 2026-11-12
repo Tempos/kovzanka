@@ -30,6 +30,34 @@ function kasa2App() {
             } catch (e) {console.error("Помилка завантаження залишків у Касі 2:", e)}
         },
 
+        isTicketBlocked(item) {
+            if (!item.shoe_sizes || !Array.isArray(item.shoe_sizes)) return false;
+            if (item.status !== 'ЧЕКАЄ' && item.status !== 'WAITING') return false;
+
+            // Count how many of each size this ticket needs
+            const requiredCounts = {};
+            for (const size of item.shoe_sizes) {
+                const key = String(size);
+                requiredCounts[key] = (requiredCounts[key] || 0) + 1;
+            }
+
+            // Check against live inventory availability
+            for (const [size, neededCount] of Object.entries(requiredCounts)) {
+                let invKey = size;
+                if (!this.inventory[invKey]) {
+                    const candidate = `${size} (фігурні)`;
+                    if (this.inventory[candidate]) invKey = candidate;
+                }
+
+                const invData = this.inventory[invKey];
+                const availableStock = invData ? (invData.available ?? 0) : 0;
+
+                // If needed count exceeds currently available stock for any size, block it
+                if (neededCount > availableStock) {return true;}
+            }
+            return false;
+        },
+
         // --- API ACTIONS ---
         get wsStatus() {return getWsStatus(this.wsConnected)},
 

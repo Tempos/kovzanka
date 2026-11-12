@@ -53,7 +53,8 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
             <template :key="item.id" x-for="item in activeQueue">
-                <tr class="hover:bg-gray-50 transition-colors">
+                <tr class="hover:bg-gray-50 transition-colors"
+                    :class="isTicketBlocked(item) ? 'border-2 border-red-500 animate-pulse bg-red-50/30' : ''">
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-base sm:text-lg font-bold text-gray-900" x-text="'#' + item.ticket_number"></td>
                     <td class="px-3 sm:px-4 py-3 align-middle">
                         <div class="font-mono font-bold text-slate-900 leading-tight whitespace-nowrap text-xs sm:text-sm" x-text="formatPhone(item.phone)"></div>
