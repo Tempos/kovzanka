@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta, timezone
 from typing import List
 
@@ -8,8 +9,8 @@ from app.api.auth import is_authenticated_kasa2, verify_kasa1, verify_kasa2
 from app.db import DBSession, get_db
 from app.inventory import calculate_live_inventory
 from app.models import QueueItem, QueueStatus, SkateInventory
-from app.schemas import CreateQueueRequest, ExtendSessionRequest, InventoryItemCreate, InventoryUpdatePayload, \
-    QueueItemResponse, UserStatusResponse
+from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, InventoryItemCreate, InventoryUpdatePayload, \
+    QueueItemResponse, UpdateTicketRequest, UserStatusResponse
 from app.ws_manager import manager
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
@@ -159,6 +160,57 @@ async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
     return item
 
 
+@router.patch("/queue/{item_id}", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
+async def update_ticket_details(item_id: int, payload: UpdateTicketRequest, db: Session = Depends(get_db)):
+    if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
+        raise HTTPException(status_code=404, detail="Запис не знайдено")
+
+    allowed_statuses = [QueueStatus.WAITING, QueueStatus.CALLING, QueueStatus.SERVED, "ЧЕКАЄ", "ВИКЛИКАЄТЬСЯ", "ОБСЛУГОВУЄТЬСЯ"]
+    if item.status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Неможливо редагувати квиток у поточному статусі")
+
+    if payload.duration_minutes is not None:
+        item.duration_minutes = payload.duration_minutes
+        if item.session_start:
+            item.session_end = item.session_start + timedelta(minutes=payload.duration_minutes)
+
+    if payload.shoe_sizes is not None:
+        item.shoe_sizes = payload.shoe_sizes
+        item.people_count = len(payload.shoe_sizes)
+
+    if payload.comment is not None:
+        item.comment = payload.comment.strip() if payload.comment.strip() else None
+
+    db.commit()
+    db.refresh(item)
+    await manager.broadcast("QUEUE_UPDATED")
+    return item
+
+
+@router.post("/queue/{item_id}/cancel", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
+async def cancel_ticket_with_reason(item_id: int, payload: CancelTicketRequest, db: Session = Depends(get_db)):
+    if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
+        raise HTTPException(status_code=404, detail="Запис не знайдено")
+
+    if not payload.reason or len(payload.reason.strip()) < 3:
+        raise HTTPException(status_code=422, detail="Вкажіть причину скасування (мінімум 3 символи)")
+
+    item.status = QueueStatus.CANCELLED
+
+    # Очищаємо попередні мітки [СКАСОВАНО], щоб залишалася лише актуальна причина та оригінальний коментар
+    base_comment = item.comment or ""
+    if base_comment:
+        base_comment = re.sub(r'\[СКАСОВАНО\][^\|]*(\|\s*)?', '', base_comment).strip(' |')
+
+    new_cancellation = f"[СКАСОВАНО] {payload.reason.strip()}"
+    item.comment = f"{new_cancellation} | {base_comment}" if base_comment else new_cancellation
+
+    db.commit()
+    db.refresh(item)
+    await manager.broadcast("QUEUE_UPDATED")
+    return item
+
+
 @router.patch("/queue/{item_id}/status", response_model=QueueItemResponse)
 async def update_status(item_id: int, status: QueueStatus, db: DBSession):
     if not (item := db.get(QueueItem, item_id)):
@@ -281,10 +333,16 @@ def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
         ticket.status = QueueStatus.SERVED
     elif ticket.status == QueueStatus.SERVED:
         ticket.status = QueueStatus.CALLING
+        ticket.session_start = None
+        ticket.session_end = None
     elif ticket.status == QueueStatus.CALLING:
         ticket.status = QueueStatus.WAITING
+        ticket.session_start = None
+        ticket.session_end = None
     elif ticket.status == QueueStatus.CANCELLED:
         ticket.status = QueueStatus.WAITING
+        ticket.session_start = None
+        ticket.session_end = None
     else:
         raise HTTPException(status_code=400, detail="Цей статус не можна відкотити")
 

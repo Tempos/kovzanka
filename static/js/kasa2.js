@@ -12,6 +12,143 @@ function kasa2App() {
         // --- FORMATTERS ---
         formatPhone, formatTime,
 
+// --- STATE FOR MODALS ---
+        editModal: {
+            open: false,
+            id: null,
+            ticketNumber: '',
+            duration: 60,
+            availableDurations: [30, 45, 60, 90, 120],
+            sizes: [],
+            originalSizes: [],
+            activeTab: 'figure',
+            comment: ''
+        },
+        cancelModal: {
+            open: false,
+            id: null,
+            ticketNumber: '',
+            reason: '',
+            error: ''
+        },
+
+        // --- COMPUTED FOR EDIT MODAL ---
+        get filteredEditInventory() {
+            const filtered = {}
+            for (const [size, data] of Object.entries(this.inventory)) {
+                const lower = String(size).toLowerCase()
+                const isHockey = lower.includes('хок') || lower.includes('hok')
+
+                if (this.editModal.activeTab === 'hockey' && isHockey) {filtered[size] = data}
+                else if (this.editModal.activeTab === 'figure' && !isHockey) {filtered[size] = data}
+            }
+            return filtered
+        },
+
+        // --- EDIT METHODS ---
+        openEditModal(item) {
+            const currentSizes = Array.isArray(item.shoe_sizes) ? [...item.shoe_sizes] : []
+            this.editModal = {
+                open: true,
+                id: item.id,
+                ticketNumber: item.ticket_number,
+                duration: item.duration_minutes || 60,
+                availableDurations: [30, 45, 60, 90, 120],
+                sizes: [...currentSizes],
+                originalSizes: [...currentSizes],
+                activeTab: 'figure',
+                comment: item.comment || ''
+            }
+            if (typeof this.fetchInventory === 'function') {this.fetchInventory()}
+        },
+
+        getEditSizeCount(size) {return this.editModal.sizes.filter(s => s === size).length},
+
+        getEffectiveAvailable(size) {
+            const stockAvailable = this.inventory[size]?.available || 0
+            const originallyHeld = this.editModal.originalSizes.filter(s => s === size).length
+            return stockAvailable + originallyHeld
+        },
+
+        addEditSize(size) {
+            const maxAllowed = this.getEffectiveAvailable(size)
+            if (this.getEditSizeCount(size) < maxAllowed) {this.editModal.sizes.push(size)}
+        },
+
+        removeEditSize(size) {
+            const index = this.editModal.sizes.lastIndexOf(size)
+            if (index !== -1) {this.editModal.sizes.splice(index, 1)}
+        },
+
+        clearEditSizes() {this.editModal.sizes = []},
+
+        parseSizeNum(key) {
+            const match = String(key).match(/^(\d+)/)
+            return match ? match[1] : key
+        },
+
+        parseSizeCat(key) {
+            const match = String(key).match(/\((.*?)\)/)
+            if (!match) return ""
+            const cat = match[1]
+            return cat.startsWith("фіг") ? "фіг." : (cat.startsWith("хок") ? "хок." : cat)
+        },
+
+        async submitEdit() {
+            if (this.editModal.sizes.length === 0) return
+            try {
+                const res = await fetch(`/api/queue/${this.editModal.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        duration_minutes: parseInt(this.editModal.duration),
+                        shoe_sizes: this.editModal.sizes,
+                        comment: this.editModal.comment
+                    })
+                })
+                if (res.ok) {
+                    this.editModal.open = false
+                    await this.fetchQueue()
+                    if (typeof this.fetchInventory === 'function') await this.fetchInventory()
+                } else {
+                    const err = await res.json()
+                    alert(err.detail || 'Помилка при оновленні квитка')
+                }
+            } catch (e) {console.error("Помилка редагування:", e)}
+        },
+
+        // --- CANCEL METHODS ---
+        openCancelModal(item) {
+            this.cancelModal = {
+                open: true,
+                id: item.id,
+                ticketNumber: item.ticket_number,
+                reason: '',
+                error: ''
+            };
+        },
+
+        async submitCancel() {
+            if (!this.cancelModal.reason || this.cancelModal.reason.length < 3) {
+                this.cancelModal.error = 'Введіть причину скасування (мінімум 3 символи).';
+                return;
+            }
+            try {
+                const res = await fetch(`/api/queue/${this.cancelModal.id}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: this.cancelModal.reason })
+                });
+                if (res.ok) {
+                    this.cancelModal.open = false;
+                    await this.fetchQueue();
+                } else {
+                    const err = await res.json();
+                    this.cancelModal.error = err.detail || 'Не вдалося скасувати квиток';
+                }
+            } catch (e) {console.error("Помилка скасування:", e);}
+        },
+
         async fetchInventory() {
             try {
                 const res = await fetch("/api/inventory")
@@ -150,12 +287,6 @@ function kasa2App() {
             return this.queue.filter(i =>
                 ['ПОВЕРНЕНО', 'СКАСОВАНО', 'RETURNED', 'CANCELLED'].includes(i.status)
             )
-        },
-
-        async confirmCancel(itemId) {
-            if (window.confirm("Ви дійсно хочете скасувати цей квиток?")) {
-                await this.changeStatus(itemId, 'СКАСОВАНО')
-            }
         },
 
         async revertStatus(itemId) {

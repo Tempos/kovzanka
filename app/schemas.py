@@ -4,6 +4,11 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models import QueueStatus
+from pydantic import BaseModel, Field
+
+
+class CancelTicketRequest(BaseModel):
+    reason: str = Field(..., min_length=3, description="Причина скасування є обов'язковою")
 
 
 class CreateQueueRequest(BaseModel):
@@ -57,6 +62,12 @@ class QueueItemResponse(BaseModel):
         return [str(item) for item in v] if isinstance(v, list) else v
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateTicketRequest(BaseModel):
+    duration_minutes: int | None = None
+    shoe_sizes: List[str] | None = None
+    comment: Optional[str] = None
 
 
 class UserStatusResponse(BaseModel):
