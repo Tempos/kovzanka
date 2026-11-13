@@ -3,15 +3,17 @@ function displayApp() {
         ...queueMixin(),
         ...wsSyncMixin(),
 
+        // --- STATE AND VARIABLES ---
         isFullscreen: false,
         now: Date.now(),
 
+        // --- COMPUTED PROPERTIES ---
         get callingItems() {return this.queue.filter(item => item.status === "ВИКЛИКАЄТЬСЯ")},
         get waitingItems() {return this.queue.filter(item => item.status === "ЧЕКАЄ").slice(0, 12)},
         get servedItems() {return this.queue.filter(item => item.status === "ОБСЛУГОВУЄТЬСЯ")},
-
         get wsStatus() {return getWsStatus(this.wsConnected)},
 
+        // --- FULLSCREEN MODE ---
         toggleFullScreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(err => {
@@ -20,23 +22,16 @@ function displayApp() {
             } else if (document.exitFullscreen) {document.exitFullscreen();}
         },
 
-        formatMs(diffMs) {
-            const totalSeconds = Math.floor(diffMs / 1000)
-            const minutes = Math.floor(totalSeconds / 60)
-            const seconds = totalSeconds % 60
-            return `${minutes}:${seconds.toString().padStart(2, "0")}`
-        },
-
+        // --- TIMERS AND COUNTDOWN ---
         getRemainingTime(sessionEndIso) {
             const end = typeof parseServerDate === 'function' ? parseServerDate(sessionEndIso) : new Date(sessionEndIso)
             if (!end) return null
             const diffMs = end.getTime() - this.now
             if (diffMs <= 0) {
-                // Показує перевищення часу у форматі протермінування
                 const overdueMs = Math.abs(diffMs)
-                return '+' + this.formatMs(overdueMs)
+                return '+' + formatMs(overdueMs)
             }
-            return this.formatMs(diffMs)
+            return formatMs(diffMs)
         },
 
         isOverdue(sessionEndIso) {
@@ -45,6 +40,7 @@ function displayApp() {
             return end ? (this.now - end.getTime()) > 0 : false
         },
 
+        // --- LIFECYCLE ---
         init() {
             this.fetchQueue()
             setInterval(() => {this.fetchQueue()}, 3000)

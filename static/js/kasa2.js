@@ -4,16 +4,16 @@ function kasa2App() {
         ...queueMixin(),
         ...wsSyncMixin(),
 
+        // --- STATE AND VARIABLES ---
         showInventoryModal: false,
         searchQuery: '',
         inventory: {},
         fetchTimer: null,
-        now: Date.now(), // 1. Реактивна змінна для поточного часу
+        now: Date.now(),
 
-        // --- FORMATTERS ---
         formatPhone, formatTime,
 
-// --- STATE FOR MODALS ---
+        // --- MODALS (EDIT & CANCEL) ---
         editModal: {
             open: false,
             id: null,
@@ -33,7 +33,7 @@ function kasa2App() {
             error: ''
         },
 
-        // --- COMPUTED FOR EDIT MODAL ---
+        // --- COMPUTED PROPERTIES ---
         get filteredEditInventory() {
             const filtered = {}
             for (const [size, data] of Object.entries(this.inventory)) {
@@ -46,7 +46,34 @@ function kasa2App() {
             return filtered
         },
 
-        // --- EDIT METHODS ---
+        get activeQueue() {
+            let items = this.queue.filter(i =>
+                ['ЧЕКАЄ', 'ВИКЛИКАЄТЬСЯ', 'ОБСЛУГОВУЄТЬСЯ', 'WAITING', 'CALLING', 'SERVED'].includes(i.status)
+            );
+
+            if (!this.searchQuery || this.searchQuery.trim() === '') {return items;}
+
+            const q = this.searchQuery.trim().toLowerCase();
+            return items.filter(item => {
+                if (String(item.ticket_number).includes(q)) return true;
+                if (item.phone && String(item.phone).toLowerCase().includes(q)) return true;
+                const formattedPh = formatPhone(item.phone);
+                if (formattedPh && formattedPh.toLowerCase().includes(q)) return true;
+                if (item.comment && String(item.comment).toLowerCase().includes(q)) return true;
+                if (item.shoe_sizes && Array.isArray(item.shoe_sizes)) {
+                    if (item.shoe_sizes.some(sz => String(sz).toLowerCase().includes(q))) return true;
+                }
+                return false;
+            });
+        },
+
+        get closedQueue() {
+            return this.queue.filter(i =>
+                ['ПОВЕРНЕНО', 'СКАСОВАНО', 'RETURNED', 'CANCELLED'].includes(i.status)
+            )
+        },
+
+        // --- TICKET EDITING ---
         openEditModal(item) {
             const currentSizes = Array.isArray(item.shoe_sizes) ? [...item.shoe_sizes] : []
             this.editModal = {
@@ -83,18 +110,6 @@ function kasa2App() {
 
         clearEditSizes() {this.editModal.sizes = []},
 
-        parseSizeNum(key) {
-            const match = String(key).match(/^(\d+)/)
-            return match ? match[1] : key
-        },
-
-        parseSizeCat(key) {
-            const match = String(key).match(/\((.*?)\)/)
-            if (!match) return ""
-            const cat = match[1]
-            return cat.startsWith("фіг") ? "фіг." : (cat.startsWith("хок") ? "хок." : cat)
-        },
-
         async submitEdit() {
             if (this.editModal.sizes.length === 0) return
             try {
@@ -118,7 +133,7 @@ function kasa2App() {
             } catch (e) {console.error("Помилка редагування:", e)}
         },
 
-        // --- CANCEL METHODS ---
+        // --- TICKET CANCELLATION ---
         openCancelModal(item) {
             this.cancelModal = {
                 open: true,
@@ -150,17 +165,15 @@ function kasa2App() {
             } catch (e) {console.error("Помилка скасування:", e);}
         },
 
+        // --- STATUS & SESSION MANAGEMENT ---
         async fetchInventory() {
             try {
                 const res = await fetch("/api/inventory")
                 if (res.ok) {
                     const rawData = await res.json()
-
-                    // Природне сортування ключів (числа на початок, потім текст)
                     const sortedKeys = Object.keys(rawData).sort((a, b) =>
                         a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'})
                     )
-
                     const sortedInventory = {}
                     sortedKeys.forEach(key => {sortedInventory[key] = rawData[key]})
                     this.inventory = sortedInventory
@@ -172,14 +185,12 @@ function kasa2App() {
             if (!item.shoe_sizes || !Array.isArray(item.shoe_sizes)) return false;
             if (item.status !== 'ЧЕКАЄ' && item.status !== 'WAITING') return false;
 
-            // Count how many of each size this ticket needs
             const requiredCounts = {};
             for (const size of item.shoe_sizes) {
                 const key = String(size);
                 requiredCounts[key] = (requiredCounts[key] || 0) + 1;
             }
 
-            // Check against live inventory availability
             for (const [size, neededCount] of Object.entries(requiredCounts)) {
                 let invKey = size;
                 if (!this.inventory[invKey]) {
@@ -190,13 +201,11 @@ function kasa2App() {
                 const invData = this.inventory[invKey];
                 const availableStock = invData ? (invData.available ?? 0) : 0;
 
-                // If needed count exceeds currently available stock for any size, block it
                 if (neededCount > availableStock) {return true;}
             }
             return false;
         },
 
-        // --- API ACTIONS ---
         get wsStatus() {return getWsStatus(this.wsConnected)},
 
         async changeStatus(itemId, newStatus) {
@@ -204,7 +213,7 @@ function kasa2App() {
             if (!item) return
 
             const currentStatus = item.status
-            item.status = newStatus // Optimistic UI update
+            item.status = newStatus
 
             try {
                 const response = await fetch(
@@ -232,42 +241,45 @@ function kasa2App() {
             }
         },
 
+        async revertStatus(itemId) {
+            try {
+                const response = await fetch(`/api/queue/${itemId}/revert`, {
+                    method: "POST", headers: {"Content-Type": "application/json"}
+                })
+                if (!response.ok) {
+                    const err = await response.text()
+                    console.error("Помилка відновлення статусу:", err)
+                    return
+                }
+                await this.fetchQueue()
+            } catch (e) {console.error("Помилка відновлення статусу:", e)}
+        },
+
+        // --- TIMERS & TIME FORMATTING ---
         getOverdueMinutes(sessionEndIso) {
             if (!sessionEndIso) return 0
-
             const endTime = parseServerDate(sessionEndIso)?.getTime()
             if (!endTime) return 0
             const diffMinutes = Math.floor((this.now - endTime) / (1000 * 60))
             return diffMinutes > 0 ? diffMinutes : 0
         },
 
-        // --- LIVE TIMERS ---
-        formatMs(diffMs) {
-            const totalSeconds = Math.floor(diffMs / 1000)
-            const minutes = Math.floor(totalSeconds / 60)
-            const seconds = totalSeconds % 60
-            return `${minutes}:${seconds.toString().padStart(2, "0")}`
-        },
-
-        // Counts down while the session is still active
         getRemainingTime(sessionEndIso) {
             const end = parseServerDate(sessionEndIso)
             if (!end) return null
             const diffMs = end.getTime() - this.now
             if (diffMs <= 0) return null
-            return this.formatMs(diffMs)
+            return formatMs(diffMs)
         },
 
-        // Counts up once the session end has passed
         getOverdueTime(sessionEndIso) {
             const end = parseServerDate(sessionEndIso)
             if (!end) return null
             const diffMs = this.now - end.getTime()
             if (diffMs <= 0) return null
-            return this.formatMs(diffMs)
+            return formatMs(diffMs)
         },
 
-        // What the top line of the TIME cell should show
         getTimeDisplay(item) {
             const isActive = item.status === "ОБСЛУГОВУЄТЬСЯ" || item.status === "SERVED"
             if (isActive && item.session_end) {
@@ -277,53 +289,7 @@ function kasa2App() {
             return item.duration_minutes ? item.duration_minutes + " хв" : "—"
         },
 
-        // --- QUEUE FILTER GETTERS ---
-        get activeQueue() {
-            let items = this.queue.filter(i =>
-                ['ЧЕКАЄ', 'ВИКЛИКАЄТЬСЯ', 'ОБСЛУГОВУЄТЬСЯ', 'WAITING', 'CALLING', 'SERVED'].includes(i.status)
-            );
-
-            if (!this.searchQuery || this.searchQuery.trim() === '') {return items;}
-
-            const q = this.searchQuery.trim().toLowerCase();
-            return items.filter(item => {
-                // Пошук за номером квитка
-                if (String(item.ticket_number).includes(q)) return true;
-                // Пошук за телефоном
-                if (item.phone && String(item.phone).toLowerCase().includes(q)) return true;
-                const formattedPh = formatPhone(item.phone);
-                if (formattedPh && formattedPh.toLowerCase().includes(q)) return true;
-                // Пошук за коментарем
-                if (item.comment && String(item.comment).toLowerCase().includes(q)) return true;
-                // Пошук за розмірами
-                if (item.shoe_sizes && Array.isArray(item.shoe_sizes)) {
-                    if (item.shoe_sizes.some(sz => String(sz).toLowerCase().includes(q))) return true;
-                }
-                return false;
-            });
-        },
-
-        get closedQueue() {
-            return this.queue.filter(i =>
-                ['ПОВЕРНЕНО', 'СКАСОВАНО', 'RETURNED', 'CANCELLED'].includes(i.status)
-            )
-        },
-
-        async revertStatus(itemId) {
-            console.log("Кнопка відкату натиснута для ID:", itemId) // <-- Debug log
-            try {
-                const response = await fetch(`/api/queue/${itemId}/revert`, {
-                    method: "POST", headers: {"Content-Type": "application/json"}
-                })
-                if (!response.ok) {
-                    const err = await response.text()
-                    console.error("Помилка відкату:", err)
-                    return
-                }
-                await this.fetchQueue()
-            } catch (e) {console.error("Помилка відкату статусу:", e)}
-        },
-
+        // --- LIFECYCLE ---
         async init() {
             this.initInventory()
             if (typeof this.fetchQueue === "function") await this.fetchQueue()
