@@ -4,9 +4,11 @@ function inventory(config = {}) {
         isAdmin: config.isAdmin || false,
         wsConnected: false,
         now: Math.floor(Date.now() / 1000),
-        newSize: '',
-        newCategory: 'figure',
+        newSize: "",
+        newCategory: "figure",
         newTotal: 1,
+        sortColumn: "size", // 'size', 'total', 'in_use', 'available', 'in_queue', 'maintenance_count', 'target_timestamp'
+        sortAsc: true,
 
         get wsStatus() {return getWsStatus(this.wsConnected)},
 
@@ -23,22 +25,46 @@ function inventory(config = {}) {
             setInterval(() => {if (!document.hidden) {void this.fetchInventory()}}, 5000)
         },
 
+        // Динамічно відсортований масив розмірів
+        get sortedInventory() {
+            const entries = Object.entries(this.inventory).map(([size, data]) => ({size, ...data}))
+
+            return entries.sort((a, b) => {
+                let valA, valB
+
+                if (this.sortColumn === "size") {
+                    // Природне сортування для розмірів (26, 26 (фігурні), 27...)
+                    valA = a.size
+                    valB = b.size
+                    const cmp = valA.localeCompare(valB, undefined, {numeric: true, sensitivity: "base"})
+                    return this.sortAsc ? cmp : -cmp
+                }
+
+                if (this.sortColumn === "target_timestamp") {
+                    valA = a.target_timestamp || 9999999999
+                    valB = b.target_timestamp || 9999999999
+                } else {
+                    valA = a[this.sortColumn] ?? 0
+                    valB = b[this.sortColumn] ?? 0
+                }
+
+                if (valA < valB) return this.sortAsc ? -1 : 1
+                if (valA > valB) return this.sortAsc ? 1 : -1
+                return 0
+            })
+        },
+
+        sortBy(column) {
+            if (this.sortColumn === column) {this.sortAsc = !this.sortAsc} else {
+                this.sortColumn = column
+                this.sortAsc = true
+            }
+        },
+
         async fetchInventory() {
             try {
                 const res = await fetch("/api/inventory")
-                if (res.ok) {
-                    const rawData = await res.json()
-
-                    // Сортуємо ключі природним шляхом (Natural Sort: 38, 38_hok, 39, 40...)
-                    const sortedKeys = Object.keys(rawData).sort((a, b) =>
-                        a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'})
-                    )
-
-                    // Перебудовуємо об'єкт у потрібному порядку
-                    const sortedInventory = {}
-                    sortedKeys.forEach(key => {sortedInventory[key] = rawData[key]})
-                    this.inventory = sortedInventory
-                }
+                if (res.ok) {this.inventory = await res.json()}
             } catch (e) {console.error("Помилка завантаження залишків:", e)}
         },
 
@@ -47,12 +73,12 @@ function inventory(config = {}) {
 
             const raw = this.newSize.trim()
             let formattedSize = raw
-            if (!raw.includes('(')) {formattedSize = this.newCategory === 'hockey' ? `${raw} (хокейні)` : `${raw} (фігурні)`}
+            if (!raw.includes("(")) {formattedSize = this.newCategory === "hockey" ? `${raw} (хокейні)` : `${raw} (фігурні)`}
 
             try {
                 const res = await fetch("/api/inventory", {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({
                         size: formattedSize,
                         total_stock: Number(this.newTotal),
@@ -60,8 +86,8 @@ function inventory(config = {}) {
                     })
                 })
                 if (res.ok) {
-                    this.newSize = ''
-                    this.newCategory = 'figure'
+                    this.newSize = ""
+                    this.newCategory = "figure"
                     this.newTotal = 1
                     await this.fetchInventory()
                 } else {
@@ -74,23 +100,21 @@ function inventory(config = {}) {
         async updateStock(size, totalStock, maintenanceCount) {
             if (totalStock < 0) return
             if (maintenanceCount !== undefined && (maintenanceCount < 0 || maintenanceCount > totalStock)) {
-                alert("Кількість ковзанів на ремонті не може перевищувати загальну кількість!");
-                return;
+                alert("Кількість ковзанів на ремонті не може перевищувати загальну кількість!")
+                return
             }
 
             try {
                 const payload = {size: size, total_stock: totalStock}
                 if (maintenanceCount !== undefined) {payload.maintenance_count = maintenanceCount}
 
-                // Strictly issue PATCH; do not fall back to POST on 404/errors
                 const res = await fetch("/api/inventory", {
-                    method: 'PATCH',
-                    headers: {'Content-Type': 'application/json'},
+                    method: "PATCH",
+                    headers: {"Content-Type": "application/json"},
                     body: JSON.stringify(payload)
                 })
 
-                if (res.ok) {await this.fetchInventory()}
-                else {
+                if (res.ok) {await this.fetchInventory()} else {
                     const err = await res.json()
                     alert(err.detail || "Помилка оновлення кількості")
                 }
@@ -100,7 +124,7 @@ function inventory(config = {}) {
         async deleteSize(size) {
             if (!confirm(`Видалити розмір ${size} з бази?`)) return
             try {
-                const res = await fetch(`/api/inventory?size=${encodeURIComponent(size)}`, {method: 'DELETE'})
+                const res = await fetch(`/api/inventory?size=${encodeURIComponent(size)}`, {method: "DELETE"})
                 if (res.ok) {await this.fetchInventory()}
             } catch (e) {console.error("Помилка видалення:", e)}
         },
@@ -111,10 +135,10 @@ function inventory(config = {}) {
         },
         parseSizeCat(key) {
             const lower = String(key).toLowerCase()
-            if (lower.includes('хок') || lower.includes('hok')) return '(хок.)'
-            if (lower.includes('фіг')) return '(фіг.)'
+            if (lower.includes("хок") || lower.includes("hok")) return "(хок.)"
+            if (lower.includes("фіг")) return "(фіг.)"
             const match = String(key).match(/\((.*?)\)/)
-            return match ? `(${match[1]})` : ''
+            return match ? `(${match[1]})` : ""
         },
 
         formatCountdown(targetTimestamp, currentTime) {
