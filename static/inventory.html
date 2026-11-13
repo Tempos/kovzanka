@@ -15,11 +15,20 @@
 <header class="ak-header">
     <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
     <nav class="ak-nav" aria-label="Головна навігація">
-        <a href="/">Головна</a><a href="/inventory">Залишки</a><a href="/display">Табло</a>
+    {% if is_admin %}
+        <a href="/kasa1">Персонал</a>
+        <a href="/kasa1">Реєстрація</a>
+        <a href="/kasa2">Видача</a>
+        <a href="/inventory">Залишки</a>
+        <a href="/docs">API</a>
+        <a href="/logout">Вихід</a>
+    {% else %}
+        <a href="/">Головна</a>
+        <a href="/inventory">Залишки</a>
+        <a href="/display">Табло</a>
         <a href="/status">Мій талон</a>
-<!--        <a href="/staff">Для персоналу</a>-->
-        <template x-if="isAdmin"><a href="/kasa2" class="text-pink-400 font-bold">⚙️ Каса 2 (Адмін)</a></template>
-    </nav>
+    {% endif %}
+</nav>
 </header>
 <main class="ak-page">
     <div class="max-w-4xl mx-auto" x-data="inventory({ isAdmin: {{ 'true' if is_admin else 'false' }} })" x-init="init()">
@@ -65,7 +74,7 @@
                         Всього <span x-text="sortColumn === 'total' ? (sortAsc ? '▲' : '▼') : ''"></span>
                     </th>
                     <th @click="sortBy('in_use')" class="py-2 px-2 sm:py-3 sm:px-4 text-center cursor-pointer hover:bg-gray-100">
-                        На руках <span x-text="sortColumn === 'in_use' ? (sortAsc ? '▲' : '▼') : ''"></span>
+                        Видані <span x-text="sortColumn === 'in_use' ? (sortAsc ? '▲' : '▼') : ''"></span>
                     </th>
                     <th @click="sortBy('available')" class="py-2 px-2 sm:py-3 sm:px-4 text-center cursor-pointer hover:bg-gray-100">
                         Вільні <span x-text="sortColumn === 'available' ? (sortAsc ? '▲' : '▼') : ''"></span>
