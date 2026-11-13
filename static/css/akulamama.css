@@ -4,6 +4,16 @@
 html{min-height:100%;background:var(--ak-bg)!important;color-scheme:dark}
 body.ak-site{display:block!important;min-height:100vh;height:auto!important;padding:0!important;margin:0;color:var(--ak-text)!important;font-family:Montserrat,Arial,sans-serif!important;background:linear-gradient(110deg,#003d51 0%,#001a2a 100%)!important;overflow-x:hidden;overflow-y:auto!important}
 body.ak-site:before{content:'';position:fixed;inset:0;background:url('/static/brand/texture.png') center/cover;opacity:.22;pointer-events:none;z-index:0}
+body.fullscreen-mode .ak-header,  /* Повноекранний режим для табло черги */
+body.fullscreen-mode .ak-footer {display: none !important}
+body.fullscreen-mode {padding: 10px !important;height: 100vh !important;max-height: 100vh !important;overflow: hidden !important;}
+body.fullscreen-mode .ak-page {max-width: 100% !important;padding: 0 !important;height: 100% !important;display: flex !important;flex-direction: column !important;}
+body.fullscreen-mode .fullscreen-grid-container {flex: 1 !important;display: grid !important;grid-template-columns: 1fr 1fr !important;grid-template-rows: 1fr 1fr !important;gap: 12px !important;min-height: 0 !important;}
+body.fullscreen-mode .fullscreen-grid-container > div:nth-child(1),
+body.fullscreen-mode .fullscreen-grid-container > div:nth-child(2) {height: 100% !important;min-height: 0 !important;}
+body.fullscreen-mode .fullscreen-grid-container > div:nth-child(3) {grid-column: span 2 !important;height: 100% !important;min-height: 0 !important;}
+body.fullscreen-mode .fullscreen-grid-container .grid > div {width: 100% !important;max-width: 220px !important;margin: 0 !important;height: auto !important;align-self: start !important;}
+body.fullscreen-mode .fullscreen-grid-container .grid > div > div:last-child {white-space: normal !important;word-break: break-word !important;display: block !important;}
 .ak-site>*{position:relative}
 .ak-header{max-width:1400px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:28px;padding:24px 44px;border-bottom:1px solid var(--ak-line)}
 .ak-logo{display:flex;align-items:center;gap:22px;flex-shrink:0;text-decoration:none}

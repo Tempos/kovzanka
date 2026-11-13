@@ -62,11 +62,7 @@ async def update_inventory_item(payload: InventoryUpdatePayload, db: Session = D
 def get_inventory_status(request: Request, db: Session = Depends(get_db)):
     """Exposes current counts to cashiers for inventory tracking."""
     active_skaters = db.query(QueueItem).filter(
-        QueueItem.status.in_([
-            QueueStatus.WAITING,
-            QueueStatus.CALLING,
-            QueueStatus.SERVED
-        ])
+        QueueItem.status.in_([QueueStatus.WAITING, QueueStatus.CALLING, QueueStatus.SERVED])
     ).all()
 
     db_inventory = db.query(SkateInventory).all()
