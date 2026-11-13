@@ -23,6 +23,10 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 text-center sm:text-left w-full sm:w-auto">Каса №2: Видача ковзанів</h1>
 
+            <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
+                <input type="text" x-model="searchQuery" placeholder="Пошук (#, тел...)" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-36 sm:w-44">
+            </div>
+
             <div class="flex items-center space-x-4 w-full sm:w-auto justify-between sm:justify-end">
                 <button class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition"
                         @click="showInventoryModal = true; fetchInventory()"> Наявність ковзанів
@@ -156,9 +160,7 @@
             <!-- 2. Bottom Recently Closed Table (Shared inside the exact same scroll container) -->
             <template x-if="closedQueue.length > 0">
                 <div class="border-t-2 border-gray-200 mt-4 pt-4">
-                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-6">
-                        ↩️ Нещодавно завершені / скасовані (останні 5)
-                    </h3>
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-6">↩️ Нещодавно завершені / скасовані (останні 10)</h3>
                     <table class="w-full divide-y divide-gray-200 border-collapse opacity-85">
                         <tbody class="bg-white divide-y divide-gray-200">
                         <template :key="item.id" x-for="item in closedQueue">

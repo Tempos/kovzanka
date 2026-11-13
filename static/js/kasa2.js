@@ -5,6 +5,7 @@ function kasa2App() {
         ...wsSyncMixin(),
 
         showInventoryModal: false,
+        searchQuery: '',
         inventory: {},
         fetchTimer: null,
         now: Date.now(), // 1. Реактивна змінна для поточного часу
@@ -278,9 +279,28 @@ function kasa2App() {
 
         // --- QUEUE FILTER GETTERS ---
         get activeQueue() {
-            return this.queue.filter(i =>
+            let items = this.queue.filter(i =>
                 ['ЧЕКАЄ', 'ВИКЛИКАЄТЬСЯ', 'ОБСЛУГОВУЄТЬСЯ', 'WAITING', 'CALLING', 'SERVED'].includes(i.status)
-            )
+            );
+
+            if (!this.searchQuery || this.searchQuery.trim() === '') {return items;}
+
+            const q = this.searchQuery.trim().toLowerCase();
+            return items.filter(item => {
+                // Пошук за номером квитка
+                if (String(item.ticket_number).includes(q)) return true;
+                // Пошук за телефоном
+                if (item.phone && String(item.phone).toLowerCase().includes(q)) return true;
+                const formattedPh = formatPhone(item.phone);
+                if (formattedPh && formattedPh.toLowerCase().includes(q)) return true;
+                // Пошук за коментарем
+                if (item.comment && String(item.comment).toLowerCase().includes(q)) return true;
+                // Пошук за розмірами
+                if (item.shoe_sizes && Array.isArray(item.shoe_sizes)) {
+                    if (item.shoe_sizes.some(sz => String(sz).toLowerCase().includes(q))) return true;
+                }
+                return false;
+            });
         },
 
         get closedQueue() {
