@@ -40,19 +40,19 @@ class QueueItem(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     ticket_number: Mapped[int] = mapped_column(Integer, index=True)
-    tracking_token: Mapped[str] = mapped_column(
-        String, unique=True, default=lambda: str(uuid.uuid4())[:8]
-    )
+    tracking_token: Mapped[str] = mapped_column(String, unique=True, default=lambda: str(uuid.uuid4())[:8])
     phone: Mapped[str] = mapped_column(String)
     people_count: Mapped[int] = mapped_column(Integer)
     shoe_sizes: Mapped[list] = mapped_column(JSON)
     comment: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    status: Mapped[QueueStatus] = mapped_column(
-        Enum(QueueStatus), default=QueueStatus.WAITING, index=True
-    )
+    status: Mapped[QueueStatus] = mapped_column(Enum(QueueStatus), default=QueueStatus.WAITING, index=True)
 
     duration_minutes: Mapped[int] = mapped_column(Integer, default=60)
     session_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     session_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc))
+
+    # telegram bot
+    telegram_chat_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    reminder_sent: Mapped[bool] = mapped_column(Boolean, default=False)

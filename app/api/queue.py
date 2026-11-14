@@ -6,11 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSo
 from sqlalchemy.orm import Session
 
 from app.api.auth import is_authenticated_kasa2, verify_kasa1, verify_kasa2
+from app.bot import send_telegram_notification
 from app.db import DBSession, get_db
 from app.inventory import calculate_live_inventory
 from app.models import QueueItem, QueueStatus, SkateInventory
-from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, InventoryItemCreate, InventoryUpdatePayload, \
-    QueueItemResponse, UpdateTicketRequest, UserStatusResponse
+from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, InventoryItemCreate, \
+    InventoryUpdatePayload, QueueItemResponse, UpdateTicketRequest, UserStatusResponse
 from app.ws_manager import manager
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
@@ -141,6 +142,19 @@ async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
     last_ticket = db.query(QueueItem).order_by(QueueItem.id.desc()).first()
     next_number = (last_ticket.ticket_number + 1) if last_ticket else 101
 
+    norm_phone = "".join(filter(str.isdigit, req.phone))
+    norm_phone_key = norm_phone[-9:] if len(norm_phone) >= 9 else norm_phone
+
+    existing_chat_id = None
+    if norm_phone_key:
+        linked_items = db.query(QueueItem).filter(QueueItem.telegram_chat_id.isnot(None)).all()
+        for r in linked_items:
+            r_norm = "".join(filter(str.isdigit, r.phone))
+            r_norm_key = r_norm[-9:] if len(r_norm) >= 9 else r_norm
+            if r_norm_key == norm_phone_key:
+                existing_chat_id = r.telegram_chat_id
+                break
+
     item = QueueItem(
         ticket_number=next_number,
         phone=req.phone,
@@ -148,6 +162,7 @@ async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
         shoe_sizes=req.shoe_sizes,
         duration_minutes=req.duration_minutes,
         comment=req.comment,
+        telegram_chat_id=existing_chat_id,
     )
     db.add(item)
     db.commit()
@@ -213,6 +228,7 @@ async def update_status(item_id: int, status: QueueStatus, db: DBSession):
     if not (item := db.get(QueueItem, item_id)):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
 
+    old_status = item.status
     item.status = status
 
     if status == QueueStatus.SERVED and not item.session_start:
@@ -222,6 +238,26 @@ async def update_status(item_id: int, status: QueueStatus, db: DBSession):
 
     db.commit()
     db.refresh(item)
+
+    print(f"[DEBUG STATUS] Ticket #{item.ticket_number} (ID: {item.id}) "
+          f"| Old: {old_status} -> New: {status} | Chat ID: {item.telegram_chat_id}")
+
+    is_calling = str(status) in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]
+    was_not_calling = str(old_status) not in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]
+
+    if is_calling and was_not_calling and item.telegram_chat_id:
+        try:
+            await send_telegram_notification(
+                str(item.telegram_chat_id),
+                f"🎟️ Шановний гість! Ваш талон **#{item.ticket_number}** викликається на видачу ковзанів."
+                f" Будь ласка, підійдіть до стійки видачі!"
+            )
+            print(f"[SUCCESS] Telegram notification sent to chat_id: {item.telegram_chat_id}")
+        except Exception as e:
+            print(f"[ERROR] Failed to send Telegram notification: {e}")
+    else:
+        print("[DEBUG] Notification skipped (conditions not met or no chat_id)")
+
     await manager.broadcast("QUEUE_UPDATED")
     return item
 
