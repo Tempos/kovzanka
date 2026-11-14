@@ -1,4 +1,6 @@
-// --- FORMATTERS ---
+// ==========================================
+// 1. FORMATTERS AND DATES
+// ==========================================
 function formatPhone(phone) {
     if (!phone) return "—"
     let cleaned = ("" + phone).replace(/\D/g, "")
@@ -13,7 +15,6 @@ function formatTime(isoString) {
     return date.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", hour12: false})
 }
 
-// Parses a server timestamp into a Date, unambiguously (UTC naive format handler).
 function parseServerDate(isoString) {
     if (!isoString) return null
     if (/[Zz]|[+-]\d{2}:?\d{2}$/.test(isoString)) {
@@ -27,6 +28,10 @@ function parseServerDate(isoString) {
     return Number.isNaN(date.getTime()) ? null : date
 }
 
+
+// ==========================================
+// 2. WEBSOCKET & STATUSES
+// ==========================================
 function getWsStatus(wsConnected) {
     return wsConnected
         ? {title: "ЗВ'ЯЗОК АКТИВНИЙ (WS)", class: "bg-green-500 animate-pulse"}
@@ -59,8 +64,39 @@ function createQueueWebSocket({onMessage, onOpen, onClose}) {
     return {get instance() { return socket }}
 }
 
-// Compact size summary for display boards and modals
-function formatSizesSummary(sizes, maxChars = 21) {
+
+// ==========================================
+// 3. SIZES AND TIME HELPERS
+// ==========================================
+function parseSizeNum(key) {
+    const match = String(key).match(/^(\d+)/)
+    return match ? match[1] : key
+}
+
+function parseSizeCat(key) {
+    const lower = String(key).toLowerCase()
+    if (lower.includes("хок") || lower.includes("hok")) return "(хок.)"
+    if (lower.includes("фіг")) return "(фіг.)"
+    const match = String(key).match(/\((.*?)\)/)
+    return match ? `(${match[1]})` : ""
+}
+
+function formatMs(diffMs) {
+    const totalSeconds = Math.floor(diffMs / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+}
+
+function formatSizeKey(key) {
+    const match = String(key).match(/^(\d+)\s*\((.*?)\)$/)
+    if (!match) return key
+    const [_, num, cat] = match
+    const shortCat = cat.startsWith("фіг") ? "фіг." : (cat.startsWith("хок") ? "хок." : cat)
+    return `${num} (${shortCat})`
+}
+
+function formatSizesSummary(sizes, maxChars = 30) {
     if (typeof sizes === "string") {
         try {sizes = JSON.parse(sizes)} catch (e) {sizes = sizes ? [sizes] : []}
     }
@@ -69,31 +105,19 @@ function formatSizesSummary(sizes, maxChars = 21) {
 
     const counts = {}
     for (const s of sizes) counts[s] = (counts[s] || 0) + 1
-    const uniqueSizes = Object.keys(counts).map(Number).sort((a, b) => a - b)
-    const groupStrs = uniqueSizes.map(s => counts[s] > 1 ? `${s}×${counts[s]}` : `${s}`)
 
-    let shown = 0, len = 0
-    while (shown < groupStrs.length) {
-        const addLen = (shown === 0 ? groupStrs[shown].length : 2 + groupStrs[shown].length)
-        const remainingAfter = groupStrs.length - shown - 1
-        const shownPeopleIfAdded = uniqueSizes.slice(0, shown + 1).reduce((sum, s) => sum + counts[s], 0)
-        const tailLen = remainingAfter > 0 ? 1 + String(sizes.length - shownPeopleIfAdded).length : 0
-        if (len + addLen + tailLen > maxChars) break
-        len += addLen
-        shown++
-    }
+    const groupStrs = Object.entries(counts).map(([s, count]) => {
+        const formatted = formatSizeKey(s)
+        return count > 1 ? `${formatted}×${count}` : `${formatted}`
+    })
 
-    const parts = groupStrs.slice(0, shown)
-    if (shown < groupStrs.length) {
-        const shownPeople = uniqueSizes.slice(0, shown).reduce((sum, s) => sum + counts[s], 0)
-        parts.push(`+${sizes.length - shownPeople}`)
-    }
-
-    return parts.join(", ")
+    return groupStrs.join(", ")
 }
 
-// --- MIXINS ---
 
+// ==========================================
+// 4. ALPINE.JS MIXINS
+// ==========================================
 function inventoryMixin() {
     return {
         inventory: {},
@@ -160,30 +184,4 @@ function wsSyncMixin() {
             this.socket = wsWrapper.instance
         }
     }
-}
-
-function formatSizeKey(key) {
-    const match = String(key).match(/^(\d+)\s*\((.*?)\)$/)
-    if (!match) return key
-    const [_, num, cat] = match
-    const shortCat = cat.startsWith("фіг") ? "фіг" : (cat.startsWith("хок") ? "хок" : cat)
-    return `${num} (${shortCat})`
-}
-
-function formatSizesSummary(sizes, maxChars = 30) {
-    if (typeof sizes === "string") {
-        try {sizes = JSON.parse(sizes)} catch (e) {sizes = sizes ? [sizes] : []}
-    }
-
-    if (!sizes || sizes.length === 0) return "—"
-
-    const counts = {}
-    for (const s of sizes) counts[s] = (counts[s] || 0) + 1
-
-    const groupStrs = Object.entries(counts).map(([s, count]) => {
-        const formatted = formatSizeKey(s)
-        return count > 1 ? `${formatted}×${count}` : `${formatted}`
-    })
-
-    return groupStrs.join(", ")
 }

@@ -2,8 +2,9 @@ import os
 import secrets
 from typing import Optional
 
-from fastapi import APIRouter, Request, Response, Cookie, HTTPException, status
+from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
 from pydantic import BaseModel
+from starlette.responses import RedirectResponse
 
 from app.limiter import limiter
 
@@ -61,11 +62,12 @@ def login(data: RoleLoginRequest, request: Request, response: Response):
     return {"status": "success", "role": assigned_role}
 
 
-@router.post("/api/logout")
-def logout(response: Response):
+@router.get("/logout")
+def logout_endpoint(response: Response):
+    response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie("kasa1_session")
     response.delete_cookie("kasa2_session")
-    return {"status": "logged_out"}
+    return response
 
 
 # Helper session checks

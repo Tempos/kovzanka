@@ -1,8 +1,12 @@
 function statusApp() {
     return {
-        ticketNumber: "", inputTicket: "", data: {}, pollInterval: null,
+        // --- STATE ---
+        ticketNumber: "",
+        inputTicket: "",
+        data: {},
+        pollInterval: null,
 
-        // --- API ACTIONS ---
+        // --- ACTIONS & NAVIGATION ---
         searchTicket() {
             const ticketNum = parseInt(this.inputTicket);
             if (!isNaN(ticketNum) && ticketNum >= 101) {window.location.search = `?ticket=${ticketNum}`}
@@ -27,6 +31,7 @@ function statusApp() {
             } catch (e) {console.error("Помилка завантаження статусу:", e)}
         },
 
+        // --- LIFECYCLE ---
         init() {
             const urlParams = new URLSearchParams(window.location.search)
             this.ticketNumber = urlParams.get("ticket") || ""

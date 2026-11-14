@@ -127,12 +127,9 @@ def get_full_queue(db: DBSession):
 
     recent_closed = (
         db.query(QueueItem)
-        .filter(QueueItem.status.in_([
-            QueueStatus.RETURNED,
-            QueueStatus.CANCELLED
-        ]))
+        .filter(QueueItem.status.in_([QueueStatus.RETURNED, QueueStatus.CANCELLED]))
         .order_by(QueueItem.id.desc())
-        .limit(5)
+        .limit(10)
         .all()
     )
 

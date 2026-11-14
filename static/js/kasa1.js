@@ -6,6 +6,7 @@ function kasa1() {
         ...queueMixin(),
         ...wsSyncMixin(),
 
+        // --- STATE AND VARIABLES ---
         formattedPhone: "+380 ",
         rawDigits: "",
         shoeSizes: [],
@@ -19,9 +20,9 @@ function kasa1() {
         showInventoryModal: false,
         queue: [],
         wsConnected: false,
-        activeTab: 'figure', // 'figure' або 'hockey'
+        activeTab: 'figure',
 
-        // --- ОБЧИСЛЮВАННІ ВЛАСТИВОСТІ ---
+        // --- COMPUTED PROPERTIES ---
         get canSubmit() {return this.shoeSizes.length > 0 && this.rawDigits.length >= LOCAL_PHONE_DIGITS},
 
         get filteredInventory() {
@@ -36,7 +37,7 @@ function kasa1() {
             return filtered
         },
 
-        // --- ІНВЕНТАР ТА ЗАЛИШКИ ---
+        // --- INVENTORY MANAGEMENT ---
         async fetchInventory() {
             const requestId = ++this.inventoryRequestId
             try {
@@ -44,14 +45,11 @@ function kasa1() {
                 if (res.ok) {
                     const rawData = await res.json()
                     if (requestId === this.inventoryRequestId) {
-                        // Природне сортування ключів (числа на початок, потім текст)
                         const sortedKeys = Object.keys(rawData).sort((a, b) =>
                             a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
                         )
-
                         const sortedInventory = {}
                         sortedKeys.forEach(key => {sortedInventory[key] = rawData[key]})
-
                         this.inventory = sortedInventory
                         this.inventoryError = false
                     }
@@ -67,7 +65,7 @@ function kasa1() {
             await this.fetchInventory()
         },
 
-        // --- МЕТОДИ КЕРУВАННЯ РОЗМІРАМИ (ПКМ / ЛКМ) ---
+        // --- SIZE SELECTION ---
         addSize(size) {
             const available = this.inventory[size]?.available || 0
             const currentSelected = this.getSizeCount(size)
@@ -80,7 +78,7 @@ function kasa1() {
         getSizeCount(size) {return this.shoeSizes.filter(s => s === size).length},
         clearSizes() {this.shoeSizes = []},
 
-        // --- ОБРОБКА ТЕЛЕФОНУ ТА МАСКИ ---
+        // --- PHONE MASKS ---
         formatPhone() {
             const digits = this.extractDigits(this.formattedPhone)
             this.rawDigits = digits
@@ -100,7 +98,7 @@ function kasa1() {
 
         statusLink(ticket) { return "/status?ticket=" + ticket.ticket_number },
 
-        // --- ДІЇ З ФОРМОЮ ТА КВИТКАМИ ---
+        // --- FORM SUBMISSION ---
         resetForm() {
             this.formattedPhone = "+380 "
             this.rawDigits = ""
@@ -138,17 +136,7 @@ function kasa1() {
             } catch (e) {console.error("Помилка створення квитка:", e)}
         },
 
-        parseSizeNum(key) {
-            const match = String(key).match(/^(\d+)/)
-            return match ? match[1] : key
-        },
-        parseSizeCat(key) {
-            const match = String(key).match(/\((.*?)\)/)
-            if (!match) return ""
-            const cat = match[1]
-            return cat.startsWith("фіг") ? "фіг." : (cat.startsWith("хок") ? "хок." : cat)
-        },
-
+        // --- LIFECYCLE ---
         async init() {
             this.initInventory()
             if (typeof this.fetchQueue === "function") await this.fetchQueue()
