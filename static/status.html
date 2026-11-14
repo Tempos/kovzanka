@@ -28,6 +28,16 @@
                            class="flex-1 bg-slate-900 border border-slate-700 px-4 py-2 rounded-xl text-white outline-none focus:border-blue-500">
                     <button @click="searchTicket()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl font-bold">Знайти</button>
                 </div>
+
+                <!-- Telegram Bot QR Section (Search View) -->
+                <div class="mt-6 pt-4 border-t border-slate-700/50">
+                    <p class="text-xs text-slate-400 mb-3">Або відстежуйте чергу через Telegram-бот:</p>
+                    <a href="https://t.me/AKULAMAMA_BOT" target="_blank" class="inline-flex flex-col items-center group">
+                        <img src="/static/brand/akulamama_bot_qr.jpg" alt="@AKULAMAMA_BOT QR" class="w-36 h-36 rounded-2xl border-2 border-slate-700 group-hover:border-blue-500 transition shadow-md">
+                        <span class="mt-2 text-sm font-mono font-bold text-blue-400 group-hover:underline">@AKULAMAMA_BOT</span>
+                    </a>
+                </div>
+
                 <div class="border-t border-slate-800 my-6"></div>
                 <a href="/" class="block text-center text-sm text-slate-400 hover:text-white transition">← На головну (для гостей)</a>
             </div>
@@ -133,6 +143,15 @@
                         </div>
                     </div>
                 </template>
+
+                <!-- Telegram Bot QR Footer Widget (Ticket Status View) -->
+                <div class="mt-6 pt-4 border-t border-slate-700/50 bg-slate-900/40 p-3 rounded-2xl">
+                    <p class="text-xs text-slate-400 mb-2">Стежте за статусом у Telegram:</p>
+                    <a href="https://t.me/AKULAMAMA_BOT" target="_blank" class="inline-block">
+                        <img src="/static/brand/akulamama_bot_qr.jpg" alt="@AKULAMAMA_BOT QR" class="w-28 h-28 mx-auto rounded-xl border border-slate-700 hover:border-blue-500 transition shadow">
+                    </a>
+                    <a href="https://t.me/AKULAMAMA_BOT" target="_blank" class="block mt-1 text-xs font-mono font-bold text-blue-400 hover:underline">@AKULAMAMA_BOT</a>
+                </div>
 
                 <div class="mt-6 pt-4 border-t border-slate-700/50">
                     <button @click="resetTicket()" class="text-xs text-slate-400 hover:text-white underline">Ввести інший номер талона</button>
