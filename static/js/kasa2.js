@@ -56,6 +56,7 @@ function kasa2App() {
             const q = this.searchQuery.trim().toLowerCase();
             return items.filter(item => {
                 if (String(item.ticket_number).includes(q)) return true;
+                if (item.id && String(item.id).toLowerCase().includes(q)) return true;
                 if (item.phone && String(item.phone).toLowerCase().includes(q)) return true;
                 const formattedPh = formatPhone(item.phone);
                 if (formattedPh && formattedPh.toLowerCase().includes(q)) return true;
@@ -68,9 +69,25 @@ function kasa2App() {
         },
 
         get closedQueue() {
-            return this.queue.filter(i =>
+            let items = this.queue.filter(i =>
                 ['ПОВЕРНЕНО', 'СКАСОВАНО', 'RETURNED', 'CANCELLED'].includes(i.status)
-            )
+            );
+
+            if (!this.searchQuery || this.searchQuery.trim() === '') {return items;}
+
+            const q = this.searchQuery.trim().toLowerCase();
+            return items.filter(item => {
+                if (String(item.ticket_number).includes(q)) return true;
+                if (item.id && String(item.id).toLowerCase().includes(q)) return true;
+                if (item.phone && String(item.phone).toLowerCase().includes(q)) return true;
+                const formattedPh = formatPhone(item.phone);
+                if (formattedPh && formattedPh.toLowerCase().includes(q)) return true;
+                if (item.comment && String(item.comment).toLowerCase().includes(q)) return true;
+                if (item.shoe_sizes && Array.isArray(item.shoe_sizes)) {
+                    if (item.shoe_sizes.some(sz => String(sz).toLowerCase().includes(q))) return true;
+                }
+                return false;
+            });
         },
 
         // --- TICKET EDITING ---

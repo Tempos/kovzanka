@@ -96,7 +96,7 @@ function formatSizeKey(key) {
     return `${num} (${shortCat})`
 }
 
-function formatSizesSummary(sizes, maxChars = 30) {
+function formatSizesSummary(sizes, maxChars = 105) {
     if (typeof sizes === "string") {
         try {sizes = JSON.parse(sizes)} catch (e) {sizes = sizes ? [sizes] : []}
     }
@@ -111,7 +111,16 @@ function formatSizesSummary(sizes, maxChars = 30) {
         return count > 1 ? `${formatted}×${count}` : `${formatted}`
     })
 
-    return groupStrs.join(", ")
+    let result = ""
+    for (const part of groupStrs) {
+        const candidate = result ? `${result}, ${part}` : part
+        if (candidate.length > maxChars) {
+            if (!result) {return part.length > maxChars ? part.substring(0, maxChars - 1) + "…" : part}
+            return `${result}…`
+        }
+        result = candidate
+    }
+    return result
 }
 
 
