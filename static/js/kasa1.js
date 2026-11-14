@@ -67,9 +67,9 @@ function kasa1() {
 
         // --- SIZE SELECTION ---
         addSize(size) {
-            const available = this.inventory[size]?.available || 0
+            const total = this.inventory[size]?.total || 999
             const currentSelected = this.getSizeCount(size)
-            if (currentSelected < available) {this.shoeSizes.push(size)}
+            if (currentSelected < total) { this.shoeSizes.push(size) }
         },
         removeSize(size) {
             const index = this.shoeSizes.lastIndexOf(size)
