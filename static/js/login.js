@@ -1,7 +1,10 @@
 document.addEventListener("alpine:init", () => {
     Alpine.data("loginForm", () => ({
-        pin: "", errorMessage: "",
+        // --- STATE ---
+        pin: "",
+        errorMessage: "",
 
+        // --- ACTIONS ---
         async submitLogin() {
             this.errorMessage = ""
             const urlParams = new URLSearchParams(window.location.search)

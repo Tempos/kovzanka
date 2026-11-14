@@ -8,102 +8,143 @@
     <script src="/static/js/shared.js"></script>
     <script src="/static/js/status.js"></script>
     <script defer src="/static/js/alpine.js"></script>
-<link rel="stylesheet" href="/static/css/akulamama.css">
-<script defer src="/static/js/akulamama.js"></script>
+    <link rel="stylesheet" href="/static/css/akulamama.css">
+    <script defer src="/static/js/akulamama.js"></script>
 </head>
 <body class="ak-site ak-status bg-slate-900 text-white min-h-screen flex items-center justify-center p-4" x-data="statusApp()" x-init="init()">
 <header class="ak-header">
     <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
-    <nav class="ak-nav" aria-label="Головна навігація"><a href="/">Головна</a><a href="/inventory">Залишки</a><a href="/display">Табло</a><a href="/status">Мій талон</a>
-<!--        <a href="/staff">Для персоналу</a>-->
-    </nav>
+    <nav class="ak-nav" aria-label="Головна навігація"><a href="/">Головна</a><a href="/inventory">Залишки</a><a href="/display">Табло</a><a href="/status">Мій талон</a></nav>
 </header>
 <main class="ak-page">
-<div class="w-full max-w-md bg-slate-800 rounded-3xl p-6 shadow-2xl text-center border border-slate-700">
+    <div class="w-full max-w-md bg-slate-800 rounded-3xl p-6 shadow-2xl text-center border border-slate-700">
 
-    <!-- Пошукове поле, якщо номер талона відсутній в URL -->
-    <template x-if="!ticketNumber">
-        <div class="space-y-4">
-            <h2 class="text-xl font-bold">Введіть номер талона</h2>
-            <div class="flex gap-2">
-                <input @keyup.enter="searchTicket()" placeholder="101" type="number" min="101" x-model="inputTicket"
-                       class="flex-1 bg-slate-900 border border-slate-700 px-4 py-2 rounded-xl text-white outline-none focus:border-blue-500">
-                <button @click="searchTicket()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl font-bold">Знайти</button>
+        <!-- Пошукове поле, якщо номер талона відсутній в URL -->
+        <template x-if="!ticketNumber">
+            <div class="space-y-4">
+                <h2 class="text-xl font-bold">Введіть номер талона</h2>
+                <div class="flex gap-2">
+                    <input @keyup.enter="searchTicket()" placeholder="101" type="number" min="101" x-model="inputTicket"
+                           class="flex-1 bg-slate-900 border border-slate-700 px-4 py-2 rounded-xl text-white outline-none focus:border-blue-500">
+                    <button @click="searchTicket()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl font-bold">Знайти</button>
+                </div>
+                <div class="border-t border-slate-800 my-6"></div>
+                <a href="/" class="block text-center text-sm text-slate-400 hover:text-white transition">← На головну (для гостей)</a>
             </div>
-            <div class="border-t border-slate-800 my-6"></div>
-            <a href="/" class="block text-center text-sm text-slate-400 hover:text-white transition">← На головну (для гостей)</a>
-        </div>
-    </template>
+        </template>
 
-    <!-- Перегляд статусу -->
-    <template x-if="ticketNumber">
-        <div>
-            <p class="text-slate-400 text-sm font-semibold uppercase tracking-wider">Ваш номер у черзі</p>
+        <!-- Перегляд статусу -->
+        <template x-if="ticketNumber">
+            <div>
+                <p class="text-slate-400 text-sm font-semibold uppercase tracking-wider">Ваш номер у черзі</p>
 
-            <!-- Ticket Number Row with Centered Flanking Navigation Buttons -->
-            <div class="flex items-center justify-between my-3 px-2">
-                <button @click="loadTicket(Number(ticketNumber) - 1)" title="Попередній талон"
-                        class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700
-                        hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95">
-                    ‹
-                </button>
+                <!-- Ticket Number Row with Centered Flanking Navigation Buttons -->
+                <div class="flex items-center justify-between my-3 px-2">
+                    <button @click="loadTicket(Number(ticketNumber) - 1)" title="Попередній талон"
+                            class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700
+                        hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95">‹
+                    </button>
 
-                <h1 class="text-7xl font-black text-blue-400" x-text="data.ticket_number ? '#' + data.ticket_number : '#' + ticketNumber">#---</h1>
+                    <h1 class="text-7xl font-black text-blue-400" x-text="data.ticket_number ? '#' + data.ticket_number : '#' + ticketNumber">#---</h1>
 
-                <button @click="loadTicket(Number(ticketNumber) + 1)"
-                        class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700 hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95"
-                        title="Наступний талон">
-                    ›
-                </button>
-            </div>
+                    <button @click="loadTicket(Number(ticketNumber) + 1)"
+                            class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700 hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95"
+                            title="Наступний талон">›
+                    </button>
+                </div>
 
-            <!-- Плашка статусу -->
-            <div :class="{
+                <!-- Плашка статусу -->
+                <div :class="{
                         'bg-amber-500/20 text-amber-400 border border-amber-500/30': data.status === 'ЧЕКАЄ' || data.status === 'WAITING',
                         'bg-emerald-500 text-slate-950 animate-bounce': data.status === 'ВИКЛИКАЄТЬСЯ' || data.status === 'CALLED',
                         'bg-blue-500/20 text-blue-400 border border-blue-500/30': data.status === 'ОБСЛУГОВУЄТЬСЯ' || data.status === 'SERVED',
                         'bg-slate-700 text-slate-400': data.status === 'СКАСОВАНО' || data.status === 'ПОВЕРНЕНО' || data.status === 'DONE'
                      }"
-                 class="my-6 p-4 rounded-2xl font-black text-2xl tracking-wide uppercase transition-all">
-                <span x-text="data.status || 'Завантаження...'"></span>
-            </div>
-
-            <!-- Картка деталей (показуємо, коли талон очікує) -->
-            <template x-if="data.status === 'ЧЕКАЄ' || data.status === 'WAITING'">
-                <div class="space-y-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-700/50 text-left">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-slate-400">Людей перед вами:</span>
-                        <span class="font-bold text-white text-base" x-text="data.position_in_queue + ' груп(и)'"></span>
-                    </div>
-                    <div class="flex justify-between text-sm border-t border-slate-800 pt-2">
-                        <span class="text-slate-400">Орієнтовний час:</span>
-                        <span class="font-bold text-amber-400 text-base" x-text="'~' + data.estimated_wait_minutes + ' хв'"></span>
-                    </div>
-                    <div class="flex justify-between text-sm border-t border-slate-800 pt-2">
-                        <span class="text-slate-400">Ваші розміри:</span>
-                        <span class="font-bold text-slate-200" x-text="data.shoe_sizes?.join(', ')"></span>
-                    </div>
+                     class="my-6 p-4 rounded-2xl font-black text-2xl tracking-wide uppercase transition-all">
+                    <span x-text="data.status || 'Завантаження...'"></span>
                 </div>
-            </template>
 
-            <!-- Заклик до дії при виклику -->
-            <template x-if="data.status === 'ВИКЛИКАЄТЬСЯ' || data.status === 'CALLED'">
-                <div class="bg-emerald-900/50 border border-emerald-500/60 p-5 rounded-2xl text-emerald-200 text-center space-y-1">
-                    <div class="text-3xl">⛸️</div>
-                    <p class="font-bold text-lg text-white">Ваша черга підійшла!</p>
-                    <p class="text-sm">Підійдіть, будь ласка, до <strong>Каси 2</strong> для отримання ковзанів.</p>
+                <!-- Картка деталей (показуємо, коли талон очікує) -->
+                <template x-if="data.status === 'ЧЕКАЄ' || data.status === 'WAITING'">
+                    <div class="space-y-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-700/50 text-left">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Людей перед вами:</span>
+                            <span class="font-bold text-white text-base" x-text="data.position_in_queue + ' груп(и)'"></span>
+                        </div>
+                        <div class="flex justify-between text-sm border-t border-slate-800 pt-2">
+                            <span class="text-slate-400">Орієнтовний час:</span>
+                            <span class="font-bold text-amber-400 text-base" x-text="'~' + data.estimated_wait_minutes + ' хв'"></span>
+                        </div>
+                        <div class="flex justify-between text-sm border-t border-slate-800 pt-2">
+                            <span class="text-slate-400">Розмір(и):</span>
+                            <span class="font-bold text-slate-200" x-text="formatSizesSummary(data.shoe_sizes)"></span>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Заклик до дії при виклику -->
+                <template x-if="data.status === 'ВИКЛИКАЄТЬСЯ' || data.status === 'CALLED'">
+                    <div class="bg-emerald-900/50 border border-emerald-500/60 p-5 rounded-2xl text-emerald-200 text-center space-y-3">
+                        <div class="text-3xl">⛸️</div>
+                        <div>
+                            <p class="font-bold text-lg text-white">Ваша черга підійшла!</p>
+                            <p class="text-sm">Підійдіть, будь ласка, до <strong>Каси 2</strong> для отримання ковзанів.
+                            </p>
+                        </div>
+                        <div class="border-t border-emerald-500/30 pt-3 text-left space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-emerald-300/80">Тривалість:</span>
+                                <span class="font-bold text-white font-mono" x-text="(data.duration_minutes || '—') + ' хв'"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-emerald-300/80">Розмір(и):</span>
+                                <span class="font-bold text-white font-mono" x-text="formatSizesSummary(data.shoe_sizes)"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Картка для На льоду (Обслуговуються) у точній копії плитки з табло -->
+                <template x-if="data.status === 'ОБСЛУГОВУЄТЬСЯ' || data.status === 'SERVED'">
+                    <div class="border rounded-2xl p-4 text-center flex flex-col justify-between transition shadow-xl"
+                         :class="isOverdue(data.session_end) ? 'bg-red-950/80 border-red-500 animate-pulse' : 'bg-blue-950/80 border-blue-500/50'">
+                        <div>
+                            <div class="text-xs text-gray-300 font-mono mb-1 uppercase tracking-wider">Інформація сеансу</div>
+                            <div class="text-xs text-gray-200 font-mono break-words" x-text="'Розмір(и): ' + formatSizesSummary(data.shoe_sizes)"></div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-t border-gray-700/60 font-mono">
+                            <template x-if="data.session_end">
+                                <div>
+                                <span class="text-3xl font-bold tracking-tight block"
+                                      :class="isOverdue(data.session_end) ? 'text-red-400' : 'text-blue-200'"
+                                      x-text="getRemainingTime(data.session_end)">
+                                </span>
+                                    <span class="text-xs uppercase tracking-wider block mt-0.5 font-bold"
+                                          :class="isOverdue(data.session_end) ? 'text-red-400' : 'text-gray-400'"
+                                          x-text="isOverdue(data.session_end) ? 'Час вийшов!' : 'залишилось на льоду'">
+                                </span>
+                                </div>
+                            </template>
+
+                            <template x-if="!data.session_end">
+                                <span class="text-sm text-gray-300" x-text="'Тривалість: ' + (data.duration_minutes || '—') + ' хв'"></span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <div class="mt-6 pt-4 border-t border-slate-700/50">
+                    <button @click="resetTicket()" class="text-xs text-slate-400 hover:text-white underline">Ввести інший номер талона</button>
+                    <div class="border-t border-slate-800 my-6"></div>
+                    <a href="/" class="block text-center text-sm text-slate-400 hover:text-white transition">← На головну (для гостей)</a>
                 </div>
-            </template>
-
-            <div class="mt-6 pt-4 border-t border-slate-700/50">
-                <button @click="resetTicket()" class="text-xs text-slate-400 hover:text-white underline">Ввести інший номер талона</button>
-                <div class="border-t border-slate-800 my-6"></div>
-                <a href="/" class="block text-center text-sm text-slate-400 hover:text-white transition">← На головну (для гостей)</a>
             </div>
-        </div>
-    </template>
-</div>
+        </template>
+    </div>
 </main>
-<footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/staff">Вхід для працівників ↗</a></footer>
+<footer class="ak-footer">
+    <span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/staff">Вхід для працівників ↗</a>
+</footer>
 </body>
 </html>

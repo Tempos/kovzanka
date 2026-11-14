@@ -2,8 +2,9 @@ import os
 import secrets
 from typing import Optional
 
-from fastapi import APIRouter, Request, Response, Cookie, HTTPException, status
+from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
 from pydantic import BaseModel
+from starlette.responses import RedirectResponse
 
 from app.limiter import limiter
 
@@ -61,11 +62,39 @@ def login(data: RoleLoginRequest, request: Request, response: Response):
     return {"status": "success", "role": assigned_role}
 
 
-@router.post("/api/logout")
-def logout(response: Response):
+from urllib.parse import urlparse
+
+@router.post("/logout")
+def logout_endpoint(
+    request: Request,
+    response: Response,
+    kasa1_session: Optional[str] = Cookie(None),
+    kasa2_session: Optional[str] = Cookie(None),
+):
+    # Reject cross-site requests by verifying Origin or Referer matches the host
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+    host = request.url.netloc
+
+    is_same_origin = bool(
+        origin
+        and urlparse(origin).netloc == host
+        or not origin
+        and referer
+        and urlparse(referer).netloc == host
+    )
+    if not is_same_origin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cross-site logout requests are not allowed")
+
+    if kasa1_session:
+        KASA1_SESSIONS.discard(kasa1_session)
+    if kasa2_session:
+        KASA2_SESSIONS.discard(kasa2_session)
+
+    response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie("kasa1_session")
     response.delete_cookie("kasa2_session")
-    return {"status": "logged_out"}
+    return response
 
 
 # Helper session checks

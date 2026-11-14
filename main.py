@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
+from app.bot import init_telegram_bot, stop_telegram_bot
 from app.inventory import init_inventory_db
 
 load_dotenv()
@@ -30,10 +31,14 @@ async def lifespan(app: FastAPI):
         init_inventory_db(db)
     finally:
         db.close()
+
+    await init_telegram_bot()
     yield
+    await stop_telegram_bot()
 
 
-app = FastAPI(title="Ice Rink Queue System API", version="1.0", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+app = FastAPI(title="Ice Rink Queue System API", version="1.0", lifespan=lifespan,
+              docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 

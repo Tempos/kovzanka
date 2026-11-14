@@ -1,5 +1,6 @@
 function inventory(config = {}) {
     return {
+        // --- STATE AND VARIABLES ---
         inventory: {},
         isAdmin: config.isAdmin || false,
         wsConnected: false,
@@ -7,25 +8,12 @@ function inventory(config = {}) {
         newSize: "",
         newCategory: "figure",
         newTotal: 1,
-        sortColumn: "size", // 'size', 'total', 'in_use', 'available', 'in_queue', 'maintenance_count', 'target_timestamp'
+        sortColumn: "size",
         sortAsc: true,
 
         get wsStatus() {return getWsStatus(this.wsConnected)},
 
-        async init() {
-            await this.fetchInventory()
-
-            createQueueWebSocket({
-                onOpen: () => {this.wsConnected = true},
-                onMessage: () => {void this.fetchInventory()},
-                onClose: () => {this.wsConnected = false}
-            })
-
-            setInterval(() => {this.now = Math.floor(Date.now() / 1000)}, 1000)
-            setInterval(() => {if (!document.hidden) {void this.fetchInventory()}}, 5000)
-        },
-
-        // Динамічно відсортований масив розмірів
+        // --- COMPUTED PROPERTIES ---
         get sortedInventory() {
             const entries = Object.entries(this.inventory).map(([size, data]) => ({size, ...data}))
 
@@ -33,7 +21,6 @@ function inventory(config = {}) {
                 let valA, valB
 
                 if (this.sortColumn === "size") {
-                    // Природне сортування для розмірів (26, 26 (фігурні), 27...)
                     valA = a.size
                     valB = b.size
                     const cmp = valA.localeCompare(valB, undefined, {numeric: true, sensitivity: "base"})
@@ -61,6 +48,7 @@ function inventory(config = {}) {
             }
         },
 
+        // --- API ACTIONS ---
         async fetchInventory() {
             try {
                 const res = await fetch("/api/inventory")
@@ -149,6 +137,20 @@ function inventory(config = {}) {
             const mins = Math.floor(diff / 60)
             const secs = diff % 60
             return mins > 0 ? `${mins} хв ${String(secs).padStart(2, "0")} с` : `${secs} с`
+        },
+
+        // --- LIFECYCLE ---
+        async init() {
+            await this.fetchInventory()
+
+            createQueueWebSocket({
+                onOpen: () => {this.wsConnected = true},
+                onMessage: () => {void this.fetchInventory()},
+                onClose: () => {this.wsConnected = false}
+            })
+
+            setInterval(() => {this.now = Math.floor(Date.now() / 1000)}, 1000)
+            setInterval(() => {if (!document.hidden) {void this.fetchInventory()}}, 5000)
         }
     }
 }

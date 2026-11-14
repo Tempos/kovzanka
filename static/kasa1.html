@@ -19,13 +19,13 @@
             .size-btn-idle {@apply bg-white text-slate-700 border-slate-200 hover:bg-slate-100}
         }
     </style>
-<link rel="stylesheet" href="/static/css/akulamama.css">
-<script defer src="/static/js/akulamama.js"></script>
+    <link rel="stylesheet" href="/static/css/akulamama.css">
+    <script defer src="/static/js/akulamama.js"></script>
 </head>
 <body class="ak-site ak-kasa1 bg-slate-100 min-h-screen p-6" x-data="kasa1()">
 <header class="ak-header">
     <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
-    <nav class="ak-nav" aria-label="Головна навігація"><a href="/staff">Персонал</a><a href="/kasa1">Реєстрація</a><a href="/kasa2">Видача</a><a href="/inventory">Залишки</a><a href="/docs">API</a></nav>
+    <nav class="ak-nav" aria-label="Головна навігація"><a href="/staff">Персонал</a><a href="/kasa1">Реєстрація</a><a href="/kasa2">Видача</a><a href="/inventory">Залишки</a><a href="/docs">API</a><a href="/logout">Вихід</a></nav>
 </header>
 <main class="ak-page">
 <div class="card">
@@ -71,8 +71,8 @@
                 </button>
             </div>
 
-           <!-- Сітка кнопок -->
-            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200">
+            <!-- Сітка кнопок -->
+            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-500">
                 <template x-for="(data, size) in filteredInventory" :key="size">
                     <button type="button" @click="addSize(size)" @contextmenu.prevent="removeSize(size)"
                             :class="getSizeCount(size) > 0 ? 'size-btn-active'
@@ -81,8 +81,9 @@
 
                         <!-- Номер розміру -->
                         <span class="text-base sm:text-lg font-black tracking-tight font-mono" x-text="parseSizeNum(size)"></span>
+
                         <!-- Категорія -->
-                        <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-tighter" x-text="parseSizeCat(size)"></span>
+                        <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-tighter" x-text="parseSizeCat(size)" :class="getSizeCount(size) > 0 ? 'text-blue-100' : 'text-slate-500'"></span>
 
                         <!-- Живий індикатор залишку -->
                         <span class="text-[9px] sm:text-[10px] font-bold mt-0.5 tracking-tighter whitespace-nowrap"
@@ -90,16 +91,13 @@
                               x-text="Math.max(0, data.available - getSizeCount(size)) + '/' + data.total">
                         </span>
 
-                        <!-- Помаранчевий круглий лічильник кількості обраних пар -->
-                        <span class="absolute -top-2 -right-2 bg-amber-500 text-slate-950 text-xs font-black w-5 h-5 rounded-full flex items-center justify-center border border-white"
-                              x-show="getSizeCount(size) > 0" x-text="getSizeCount(size)">
-                        </span>
+                        <!-- Круглий лічильник кількості обраних пар -->
+                        <span class="absolute -top-2 -right-2 bg-blue-600 text-white font-semibold shadow text-xs font-black w-5 h-5 rounded-full flex items-center justify-center border border-black"
+                              x-show="getSizeCount(size) > 0" x-text="getSizeCount(size)"></span>
 
                         <!-- Індикатор часу повернення (якщо 0 на складі) -->
                         <template x-if="data.available === 0 && data.next_available_in_mins !== null">
-                            <span class="absolute -bottom-1.5 bg-yellow-500 text-gray-950 font-mono text-[9px] font-black px-1 rounded shadow animate-pulse"
-                                  x-text="'~' + data.next_available_in_mins + 'м'">
-                            </span>
+                            <span class="absolute -bottom-1.5 text-red-600 bg-red-100 border border-red-500 font-mono text-[10px] font-black px-1 rounded shadow animate-pulse" x-text="'~' + data.next_available_in_mins + ' хв'"></span>
                         </template>
                     </button>
                 </template>
