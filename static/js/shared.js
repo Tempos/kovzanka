@@ -75,8 +75,8 @@ function parseSizeNum(key) {
 
 function parseSizeCat(key) {
     const lower = String(key).toLowerCase()
-    if (lower.includes("хок") || lower.includes("hok")) return "(hockey)"
-    if (lower.includes("фіг")) return "(figure)"
+    if (lower.includes("хок") || lower.includes("hok")) return "(хок.)"
+    if (lower.includes("фіг")) return "(фіг.)"
     const match = String(key).match(/\((.*?)\)/)
     return match ? `(${match[1]})` : ""
 }
@@ -92,7 +92,7 @@ function formatSizeKey(key) {
     const match = String(key).match(/^(\d+)\s*\((.*?)\)$/)
     if (!match) return key
     const [_, num, cat] = match
-    const shortCat = cat.startsWith("фіг") ? "fig" : (cat.startsWith("хок") ? "hoc" : cat)
+    const shortCat = cat.startsWith("фіг") ? "фіг." : (cat.startsWith("хок") ? "хок." : cat)
     return `${num} (${shortCat})`
 }
 

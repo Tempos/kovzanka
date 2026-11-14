@@ -2,6 +2,10 @@ const LOCAL_PHONE_DIGITS = 9
 
 function kasa1() {
     return {
+        ...inventoryMixin(),
+        ...queueMixin(),
+        ...wsSyncMixin(),
+
         // --- STATE AND VARIABLES ---
         formattedPhone: "+380 ",
         rawDigits: "",
