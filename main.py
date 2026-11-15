@@ -19,8 +19,6 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse
 
-Base.metadata.create_all(bind=engine)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,8 +35,15 @@ async def lifespan(app: FastAPI):
     await stop_telegram_bot()
 
 
-app = FastAPI(title="Ice Rink Queue System API", version="1.0", lifespan=lifespan,
-              docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(
+    title="Ice Rink Queue System API",
+    version="1.0",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None
+)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -50,7 +55,7 @@ def get_openapi_endpoint(kasa1_session: str = Cookie(None), kasa2_session: str =
     return get_openapi(title=app.title, version=app.version, routes=app.routes)
 
 
-# 3. Custom Protected Swagger UI Docs
+# Custom Protected Swagger UI Docs
 @app.get("/docs", include_in_schema=False)
 def custom_swagger_ui(request: Request, kasa1_session: str = Cookie(None), kasa2_session: str = Cookie(None)):
     session = kasa1_session or kasa2_session

@@ -25,48 +25,14 @@ body.fullscreen-mode .fullscreen-grid-container .grid > div > div:last-child {wh
 .ak-page{max-width:1400px;margin:0 auto;padding:44px}
 .ak-footer{max-width:1312px;margin:24px auto 0;padding:24px 0 30px;border-top:1px solid var(--ak-line);display:flex;justify-content:space-between;gap:18px;color:var(--ak-muted);font-size:11px;letter-spacing:.04em}
 .ak-footer a{color:var(--ak-aqua);text-decoration:none}
-.ak-home-footer {
-    align-items: center;
-    flex-wrap: wrap;
-}
-.ak-home-footer .ak-social {
-    flex-basis: 100%;
-}
-.ak-social .aside-social {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 12px;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-.ak-social a {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border: 1px solid var(--ak-line);
-    border-radius: 50%;
-    background: #ffffff14;
-}
+.ak-home-footer {align-items: center;flex-wrap: wrap;}
+.ak-home-footer .ak-social {flex-basis: 100%;}
+.ak-social .aside-social {display: flex;flex-wrap: wrap;justify-content: center;gap: 12px;list-style: none;margin: 0;padding: 0;}
+.ak-social a {display: grid;place-items: center;width: 44px;height: 44px;border: 1px solid var(--ak-line);border-radius: 50%;background: #ffffff14;}
 .ak-social a:hover,
-.ak-social a:focus-visible {
-    color: #001a2a;
-    background: var(--ak-aqua);
-}
-.ak-social svg {
-    width: 22px;
-    height: 22px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.7;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-.ak-social a[aria-label="Facebook"] svg {
-    stroke: none;
-}
+.ak-social a:focus-visible {color: #001a2a;background: var(--ak-aqua);}
+.ak-social svg {width: 22px;height: 22px;fill: none;stroke: currentColor;stroke-width: 1.7;stroke-linecap: round;stroke-linejoin: round;}
+.ak-social a[aria-label="Facebook"] svg {stroke: none;}
 .ak-eyebrow{display:flex;align-items:center;gap:10px;color:var(--ak-pink);text-transform:uppercase;letter-spacing:.2em;font-size:11px;font-weight:600}
 .ak-eyebrow:before{content:'✳';font-size:24px;line-height:1}
 .ak-hero{display:grid;grid-template-columns:1.2fr 1fr;align-items:center;gap:60px;padding:22px 0 52px}

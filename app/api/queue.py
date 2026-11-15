@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.auth import KASA2_PIN, verify_kasa1, verify_kasa2
@@ -83,9 +84,7 @@ async def update_ticket_details(item_id: int, payload: UpdateTicketRequest, db: 
 
 @router.post("/queue", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa1)])
 async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
-    last_ticket = db.query(QueueItem).order_by(QueueItem.id.desc()).first()
-    next_number = (last_ticket.ticket_number + 1) if last_ticket else 101
-
+    # 1. Look up existing Telegram chat ID based on phone number
     norm_phone = "".join(filter(str.isdigit, req.phone))
     norm_phone_key = norm_phone[-9:] if len(norm_phone) >= 9 else norm_phone
 
@@ -99,21 +98,31 @@ async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
                 existing_chat_id = r.telegram_chat_id
                 break
 
-    item = QueueItem(
-        ticket_number=next_number,
-        phone=req.phone,
-        people_count=len(req.shoe_sizes),
-        shoe_sizes=req.shoe_sizes,
-        duration_minutes=req.duration_minutes,
-        comment=req.comment,
-        telegram_chat_id=existing_chat_id,
-    )
-    db.add(item)
-    db.commit()
-    db.refresh(item)
+    # 2. Retry loop for atomic ticket number allocation under concurrency
+    for _ in range(5):
+        last_ticket = db.query(QueueItem).order_by(QueueItem.id.desc()).first()
+        next_number = (last_ticket.ticket_number + 1) if last_ticket else 101
 
-    await manager.broadcast("QUEUE_UPDATED")
-    return item
+        item = QueueItem(
+            ticket_number=next_number,
+            phone=req.phone,
+            people_count=len(req.shoe_sizes),
+            shoe_sizes=req.shoe_sizes,
+            duration_minutes=req.duration_minutes,
+            comment=req.comment,
+            telegram_chat_id=existing_chat_id,
+        )
+        db.add(item)
+        try:
+            db.commit()
+            db.refresh(item)
+            await manager.broadcast("QUEUE_UPDATED")
+            return item
+        except IntegrityError:
+            db.rollback()
+            continue
+
+    raise HTTPException(status_code=500, detail="Could not allocate unique ticket number due to high concurrency.")
 
 
 @router.post("/queue/{item_id}/cancel", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])

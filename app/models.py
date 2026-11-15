@@ -39,7 +39,7 @@ class QueueItem(Base):
     __tablename__ = "queue"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    ticket_number: Mapped[int] = mapped_column(Integer, index=True)
+    ticket_number: Mapped[int] = mapped_column(Integer, index=True, nullable=False, unique=True)
     tracking_token: Mapped[str] = mapped_column(String(64), unique=True, default=lambda: str(uuid.uuid4())[:8])
     phone: Mapped[str] = mapped_column(Text)
     people_count: Mapped[int] = mapped_column(Integer)
