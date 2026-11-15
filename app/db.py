@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 load_dotenv()
 
@@ -21,9 +21,7 @@ if mysql_host := os.getenv("MYSQL_HOST"):
     )
     engine = create_engine(database_url, pool_pre_ping=True)
 else:
-    engine = create_engine(
-        "sqlite:///./ice_rink.db", connect_args={"check_same_thread": False}
-    )
+    engine = create_engine("sqlite:///./ice_rink.db", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

@@ -34,6 +34,11 @@
                         @click="showInventoryModal = true; fetchInventory()"> Наявність ковзанів
                 </button>
 
+                <!-- Кнопка масового додавання часу / технічної перерви -->
+                <button class="inline-flex items-center px-3 py-1.5 border border-amber-300 text-sm font-medium rounded-md text-amber-800 bg-amber-50 hover:bg-amber-100 shadow-sm transition"
+                        @click="techBreakModal.open = true; techBreakModal.password = ''; techBreakModal.error = ''">⏱️ Технічна перерва (+10 хв)
+                </button>
+
                 <!-- WebSocket Status Badge with Mouseover Tooltip -->
                 <div :title="wsStatus.title" class="inline-flex items-center justify-center py-1.5 cursor-help">
                     <span :class="wsStatus.class" class="w-3 h-3 rounded-full transition-colors inline-block"></span>
@@ -348,6 +353,34 @@
                         :disabled="!cancelModal.reason || cancelModal.reason.length < 3"
                         class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition">
                     Підтвердити скасування
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНЕ ВІКНО ТЕХНІЧНОЇ ПЕРЕРИВИ / МАСОВОГО ДОДАВАННЯ ЧАСУ -->
+    <div x-show="techBreakModal.open" x-cloak class="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border-t-4 border-amber-500" @click.away="techBreakModal.open = false">
+            <h3 class="text-xl font-bold text-amber-800 mb-1">⚠️ Технічна перерва</h3>
+            <p class="text-xs text-gray-500 mb-4">Ця дія додасть +10 хвилин до часу всіх активних квитків на льоду. Введіть пароль адміністратора для підтвердження.</p>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Пароль адміністратора *</label>
+                <input type="password"
+                       x-model="techBreakModal.password"
+                       @keyup.enter="submitTechBreak()"
+                       placeholder="Введіть пароль..."
+                       class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                <p x-show="techBreakModal.error" x-text="techBreakModal.error" class="text-red-500 text-xs mt-1 font-medium"></p>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button type="button" @click="techBreakModal.open = false" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-xl text-sm font-medium text-gray-700">Скасувати</button>
+                <button type="button"
+                        @click="submitTechBreak()"
+                        :disabled="!techBreakModal.password"
+                        class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition">
+                    Підтвердити (+10 хв)
                 </button>
             </div>
         </div>

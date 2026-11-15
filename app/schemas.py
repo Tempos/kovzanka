@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, Field
+from pydantic import ConfigDict, field_validator
 
 from app.models import QueueStatus
-from pydantic import BaseModel, Field
 
 
 class CancelTicketRequest(BaseModel):
@@ -41,6 +41,11 @@ class InventoryItemUpdate(BaseModel):
 
 class LoginRequest(BaseModel):
     pin: str
+
+
+class MassExtendRequest(BaseModel):
+    minutes: int
+    admin_password: str
 
 
 class QueueItemResponse(BaseModel):

@@ -306,6 +306,34 @@ function kasa2App() {
             return item.duration_minutes ? item.duration_minutes + " хв" : "—"
         },
 
+        techBreakModal: {
+            open: false,
+            password: '',
+            error: ''
+        },
+
+        async submitTechBreak() {
+            if (!this.techBreakModal.password) return;
+            try {
+                const res = await fetch(`/api/queue/mass-extend`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({minutes: 10, admin_password: this.techBreakModal.password})
+                });
+                if (res.ok) {
+                    this.techBreakModal.open = false;
+                    this.techBreakModal.password = '';
+                    await this.fetchQueue();
+                } else {
+                    const err = await res.json();
+                    this.techBreakModal.error = err.detail || 'Невірний пароль або помилка сервера';
+                }
+            } catch (e) {
+                console.error("Помилка масового додавання часу:", e);
+                this.techBreakModal.error = 'Помилка мережі';
+            }
+        },
+
         // --- LIFECYCLE ---
         async init() {
             this.initInventory()

@@ -5,13 +5,13 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
-from app.api.auth import is_authenticated_kasa2, verify_kasa1, verify_kasa2
+from app.api.auth import is_authenticated_kasa2, KASA2_PIN, verify_kasa1, verify_kasa2
 from app.bot import send_telegram_notification
 from app.db import DBSession, get_db
 from app.inventory import calculate_live_inventory
 from app.models import QueueItem, QueueStatus, SkateInventory
 from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, InventoryItemCreate, \
-    InventoryUpdatePayload, QueueItemResponse, UpdateTicketRequest, UserStatusResponse
+    InventoryUpdatePayload, MassExtendRequest, QueueItemResponse, UpdateTicketRequest, UserStatusResponse
 from app.ws_manager import manager
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
@@ -382,3 +382,29 @@ def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(ticket)
     return ticket
+
+
+@router.post("/queue/mass-extend", dependencies=[Depends(verify_kasa2)])
+async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends(get_db)):
+    if payload.admin_password != KASA2_PIN:
+        raise HTTPException(status_code=403, detail="Невірний пароль адміністратора")
+
+    if payload.minutes <= 0:
+        raise HTTPException(status_code=400, detail="Кількість хвилин має бути більшою за нуль")
+
+    active_served_items = db.query(QueueItem).filter(
+        QueueItem.status.in_([QueueStatus.SERVED, "SERVED", "ОБСЛУГОВУЄТЬСЯ"])
+    ).all()
+
+    for item in active_served_items:
+        item.duration_minutes += payload.minutes
+        if item.session_end:
+            item.session_end += timedelta(minutes=payload.minutes)
+        else:
+            now = datetime.now(timezone.utc)
+            item.session_start = item.session_start or now
+            item.session_end = now + timedelta(minutes=item.duration_minutes)
+
+    db.commit()
+    await manager.broadcast("QUEUE_UPDATED")
+    return {"status": "success", "updated_count": len(active_served_items)}
