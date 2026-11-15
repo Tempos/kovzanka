@@ -1,6 +1,4 @@
-// ==========================================
 // 1. FORMATTERS AND DATES
-// ==========================================
 function formatPhone(phone) {
     if (!phone) return "—"
     let cleaned = ("" + phone).replace(/\D/g, "")
@@ -29,9 +27,7 @@ function parseServerDate(isoString) {
 }
 
 
-// ==========================================
 // 2. WEBSOCKET & STATUSES
-// ==========================================
 function getWsStatus(wsConnected) {
     return wsConnected
         ? {title: "ЗВ'ЯЗОК АКТИВНИЙ (WS)", class: "bg-green-500 animate-pulse"}
@@ -65,9 +61,7 @@ function createQueueWebSocket({onMessage, onOpen, onClose}) {
 }
 
 
-// ==========================================
 // 3. SIZES AND TIME HELPERS
-// ==========================================
 function parseSizeNum(key) {
     const match = String(key).match(/^(\d+)/)
     return match ? match[1] : key
@@ -180,9 +174,36 @@ function getSessionPhase(item, nowMs = Date.now()) {
     return null
 }
 
-// ==========================================
+function getRemainingTime(sessionEndIso, item = null, nowMs = Date.now()) {
+    const end = parseServerDate(sessionEndIso)
+    if (!end) return null
+    const refNow = getEffectiveNow(item, nowMs)
+    const diffMs = end.getTime() - refNow
+    if (diffMs <= 0) {
+        const overdueMs = Math.abs(diffMs)
+        return "+" + formatMs(overdueMs)
+    }
+    return formatMs(diffMs)
+}
+
+function getOverdueTime(sessionEndIso, item = null, nowMs = Date.now()) {
+    const end = parseServerDate(sessionEndIso)
+    if (!end) return null
+    const refNow = getEffectiveNow(item, nowMs)
+    const diffMs = refNow - end.getTime()
+    if (diffMs <= 0) return null
+    return formatMs(diffMs)
+}
+
+function isOverdue(sessionEndIso, item = null, nowMs = Date.now()) {
+    if (!sessionEndIso) return false
+    const end = parseServerDate(sessionEndIso)
+    const refNow = getEffectiveNow(item, nowMs)
+    return end ? (refNow - end.getTime()) > 0 : false
+}
+
+
 // 4. ALPINE.JS MIXINS
-// ==========================================
 function inventoryMixin() {
     return {
         inventory: {},

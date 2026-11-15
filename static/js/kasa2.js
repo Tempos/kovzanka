@@ -272,15 +272,6 @@ function kasa2App() {
             } catch (e) {console.error("Помилка відновлення статусу:", e)}
         },
 
-        // --- TIMERS & TIME FORMATTING ---
-        getOverdueMinutes(sessionEndIso) {
-            if (!sessionEndIso) return 0
-            const endTime = parseServerDate(sessionEndIso)?.getTime()
-            if (!endTime) return 0
-            const diffMinutes = Math.floor((this.now - endTime) / (1000 * 60))
-            return diffMinutes > 0 ? diffMinutes : 0
-        },
-
         async toggleStopTimer(itemId) {
             try {
                 const response = await fetch(`/api/queue/${itemId}/stop-timer`, {
@@ -294,28 +285,10 @@ function kasa2App() {
             }
         },
 
-        getRemainingTime(sessionEndIso, item = null) {
-            const end = parseServerDate(sessionEndIso)
-            if (!end) return null
-            const refNow = getEffectiveNow(item, this.now)
-            const diffMs = end.getTime() - refNow
-            if (diffMs <= 0) return null
-            return formatMs(diffMs)
-        },
-
-        getOverdueTime(sessionEndIso, item = null) {
-            const end = parseServerDate(sessionEndIso)
-            if (!end) return null
-            const refNow = getEffectiveNow(item, this.now)
-            const diffMs = refNow - end.getTime()
-            if (diffMs <= 0) return null
-            return formatMs(diffMs)
-        },
-
         getTimeDisplay(item) {
             const isActive = item.status === "ОБСЛУГОВУЄТЬСЯ" || item.status === "SERVED"
             if (isActive && item.session_end) {
-                const remaining = this.getRemainingTime(item.session_end, item)
+                const remaining = getRemainingTime(item.session_end, item, this.now)
                 return remaining ?? "00:00"
             }
             return item.duration_minutes ? item.duration_minutes + " хв" : "—"

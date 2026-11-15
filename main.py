@@ -2,13 +2,13 @@ from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
+from app.api import auth, inventory, pages, queue, status
 from app.bot import init_telegram_bot, stop_telegram_bot
 from app.inventory import init_inventory_db
 
 load_dotenv()
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, inventory, pages, queue, status
 from app.db import engine, SessionLocal
 from app.models import Base
 from slowapi import _rate_limit_exceeded_handler
