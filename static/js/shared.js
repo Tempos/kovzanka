@@ -1,6 +1,4 @@
-// ==========================================
 // 1. FORMATTERS AND DATES
-// ==========================================
 function formatPhone(phone) {
     if (!phone) return "—"
     let cleaned = ("" + phone).replace(/\D/g, "")
@@ -29,9 +27,7 @@ function parseServerDate(isoString) {
 }
 
 
-// ==========================================
 // 2. WEBSOCKET & STATUSES
-// ==========================================
 function getWsStatus(wsConnected) {
     return wsConnected
         ? {title: "ЗВ'ЯЗОК АКТИВНИЙ (WS)", class: "bg-green-500 animate-pulse"}
@@ -65,9 +61,7 @@ function createQueueWebSocket({onMessage, onOpen, onClose}) {
 }
 
 
-// ==========================================
 // 3. SIZES AND TIME HELPERS
-// ==========================================
 function parseSizeNum(key) {
     const match = String(key).match(/^(\d+)/)
     return match ? match[1] : key
@@ -123,10 +117,93 @@ function formatSizesSummary(sizes, maxChars = 105) {
     return result
 }
 
+function getEffectiveNow(item, nowMs = Date.now()) {
+    if (item && item.overtime_stopped_at) {
+        const stoppedMs = parseServerDate(item.overtime_stopped_at)?.getTime()
+        if (stoppedMs) return stoppedMs
+    }
+    return nowMs
+}
 
-// ==========================================
+function getSessionPhase(item, nowMs = Date.now()) {
+    if (!item) return null
+    const effectiveNow = getEffectiveNow(item, nowMs)
+    const isFrozen = Boolean(item.overtime_stopped_at)
+
+    if (item.status === "ВИКЛИКАЄТЬСЯ" || item.status === "CALLING") {
+        if (!item.called_at) return null
+        const calledMs = parseServerDate(item.called_at)?.getTime()
+        if (!calledMs) return null
+        const deadline = calledMs + 5 * 60 * 1000
+        const diff = deadline - nowMs
+        return {
+            phase: "CALLING",
+            label: diff > 0 ? "⏳ На явку" : "⚠️ Запізнення",
+            time: formatMs(Math.abs(diff)),
+            overdue: diff <= 0
+        }
+    }
+
+    if ((item.status === "ОБСЛУГОВУЄТЬСЯ" || item.status === "SERVED") && item.session_end) {
+        const endMs = parseServerDate(item.session_end)?.getTime()
+        if (!endMs) return null
+        const durationMs = (item.duration_minutes || 60) * 60 * 1000
+        const lacingEndMs = endMs - durationMs
+
+        if (item.session_start && effectiveNow < lacingEndMs) {
+            return {
+                phase: "LACING",
+                label: isFrozen ? "⏸️ Перевзування (пауза)" : "👟 Перевзування",
+                time: formatMs(lacingEndMs - effectiveNow),
+                overdue: false,
+                frozen: isFrozen
+            }
+        }
+
+        const remaining = endMs - effectiveNow
+        return {
+            phase: "SKATING",
+            label: isFrozen
+                ? (remaining > 0 ? "⏸️ Зупинено" : "⏸️ Overtime зафіксовано")
+                : (remaining > 0 ? "⛸️ На льоду" : "Час вийшов!"),
+            time: formatMs(Math.abs(remaining)),
+            overdue: remaining <= 0,
+            frozen: isFrozen
+        }
+    }
+    return null
+}
+
+function getRemainingTime(sessionEndIso, item = null, nowMs = Date.now()) {
+    const end = parseServerDate(sessionEndIso)
+    if (!end) return null
+    const refNow = getEffectiveNow(item, nowMs)
+    const diffMs = end.getTime() - refNow
+    if (diffMs <= 0) {
+        const overdueMs = Math.abs(diffMs)
+        return "+" + formatMs(overdueMs)
+    }
+    return formatMs(diffMs)
+}
+
+function getOverdueTime(sessionEndIso, item = null, nowMs = Date.now()) {
+    const end = parseServerDate(sessionEndIso)
+    if (!end) return null
+    const refNow = getEffectiveNow(item, nowMs)
+    const diffMs = refNow - end.getTime()
+    if (diffMs <= 0) return null
+    return formatMs(diffMs)
+}
+
+function isOverdue(sessionEndIso, item = null, nowMs = Date.now()) {
+    if (!sessionEndIso) return false
+    const end = parseServerDate(sessionEndIso)
+    const refNow = getEffectiveNow(item, nowMs)
+    return end ? (refNow - end.getTime()) > 0 : false
+}
+
+
 // 4. ALPINE.JS MIXINS
-// ==========================================
 function inventoryMixin() {
     return {
         inventory: {},

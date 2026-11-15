@@ -50,16 +50,15 @@
 
                 <!-- Ticket Number Row with Centered Flanking Navigation Buttons -->
                 <div class="flex items-center justify-between my-3 px-2">
-                    <button @click="loadTicket(Number(ticketNumber) - 1)" title="Попередній талон"
-                            class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700
-                        hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95">‹
+                    <button @click="loadTicket(Number(ticketNumber) - 1)" title="Попередній талон" class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700 hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95">
+                        ‹
                     </button>
 
                     <h1 class="text-7xl font-black text-blue-400" x-text="data.ticket_number ? '#' + data.ticket_number : '#' + ticketNumber">#---</h1>
 
-                    <button @click="loadTicket(Number(ticketNumber) + 1)"
-                            class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700 hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95"
-                            title="Наступний талон">›
+                    <button @click="loadTicket(Number(ticketNumber) + 1)" title="Наступний талон"
+                            class="w-12 h-12 flex items-center justify-center leading-none pb-1 rounded-2xl bg-slate-700 hover:bg-blue-600 text-white font-black text-2xl transition-all shadow-lg cursor-pointer active:scale-95">
+                        ›
                     </button>
                 </div>
 
@@ -94,13 +93,18 @@
 
                 <!-- Заклик до дії при виклику -->
                 <template x-if="data.status === 'ВИКЛИКАЄТЬСЯ' || data.status === 'CALLED'">
-                    <div class="bg-emerald-900/50 border border-emerald-500/60 p-5 rounded-2xl text-emerald-200 text-center space-y-3">
+                    <div class="bg-emerald-900/50 border border-emerald-500/60 p-5 rounded-2xl text-emerald-200 text-center space-y-3" x-data="{ get phase() { return getSessionPhase(data, now) } }">
                         <div class="text-3xl">⛸️</div>
                         <div>
                             <p class="font-bold text-lg text-white">Ваша черга підійшла!</p>
-                            <p class="text-sm">Підійдіть, будь ласка, до <strong>Каси 2</strong> для отримання ковзанів.
-                            </p>
+                            <p class="text-sm">Підійдіть, будь ласка, до <strong>Каси 2</strong> для отримання ковзанів.</p>
                         </div>
+                        <template x-if="phase">
+                            <div class="bg-slate-950/60 rounded-xl py-2 px-3 font-mono">
+                                <span class="text-xs uppercase tracking-wider block" :class="phase.overdue ? 'text-red-400' : 'text-emerald-300'" x-text="phase.overdue ? 'Час очікування вийшов' : 'Час на підхід до каси'"></span>
+                                <span class="text-2xl font-black" :class="phase.overdue ? 'text-red-400 animate-pulse' : 'text-white'" x-text="(phase.overdue ? '+' : '') + phase.time"></span>
+                            </div>
+                        </template>
                         <div class="border-t border-emerald-500/30 pt-3 text-left space-y-2 text-sm">
                             <div class="flex justify-between">
                                 <span class="text-emerald-300/80">Тривалість:</span>
@@ -116,27 +120,23 @@
 
                 <!-- Картка для На льоду (Обслуговуються) у точній копії плитки з табло -->
                 <template x-if="data.status === 'ОБСЛУГОВУЄТЬСЯ' || data.status === 'SERVED'">
-                    <div class="border rounded-2xl p-4 text-center flex flex-col justify-between transition shadow-xl"
-                         :class="isOverdue(data.session_end) ? 'bg-red-950/80 border-red-500 animate-pulse' : 'bg-blue-950/80 border-blue-500/50'">
-                        <div>
-                            <div class="text-xs text-gray-300 font-mono mb-1 uppercase tracking-wider">Інформація сеансу</div>
-                            <div class="text-xs text-gray-200 font-mono break-words" x-text="'Розмір(и): ' + formatSizesSummary(data.shoe_sizes)"></div>
-                        </div>
-
+                    <div class="border rounded-2xl p-4 text-center flex flex-col justify-between transition shadow-xl" x-data="{ get phase() { return getSessionPhase(data, now) } }" :class="isOverdue(data.session_end) ? 'bg-red-950/80 border-red-500 animate-pulse' : (phase?.phase === 'LACING' ? 'bg-teal-950/80 border-teal-500/60' : 'bg-blue-950/80 border-blue-500/50')"><div>
+                        <div class="text-xs text-gray-300 font-mono mb-1 uppercase tracking-wider">Інформація сеансу</div>
+                        <div class="text-xs text-gray-200 font-mono break-words" x-text="'Розмір(и): ' + formatSizesSummary(data.shoe_sizes)"></div>
+                    </div>
                         <div class="mt-4 pt-3 border-t border-gray-700/60 font-mono">
-                            <template x-if="data.session_end">
+                            <template x-if="phase && phase.phase === 'LACING'">
                                 <div>
-                                <span class="text-3xl font-bold tracking-tight block"
-                                      :class="isOverdue(data.session_end) ? 'text-red-400' : 'text-blue-200'"
-                                      x-text="getRemainingTime(data.session_end)">
-                                </span>
-                                    <span class="text-xs uppercase tracking-wider block mt-0.5 font-bold"
-                                          :class="isOverdue(data.session_end) ? 'text-red-400' : 'text-gray-400'"
-                                          x-text="isOverdue(data.session_end) ? 'Час вийшов!' : 'залишилось на льоду'">
-                                </span>
+                                    <span class="text-3xl font-bold tracking-tight block text-teal-300" x-text="phase.time"></span>
+                                    <span class="text-xs uppercase tracking-wider block mt-0.5 font-bold text-teal-400">👟 час на перевзування (далі <span x-text="data.duration_minutes"></span> хв на льоду)</span>
                                 </div>
                             </template>
-
+                            <template x-if="(!phase || phase.phase !== 'LACING') && data.session_end">
+                                <div>
+                                    <span class="text-3xl font-bold tracking-tight block" :class="isOverdue(data.session_end) ? 'text-red-400' : 'text-blue-200'" x-text="getRemainingTime(data.session_end)"></span>
+                                    <span class="text-xs uppercase tracking-wider block mt-0.5 font-bold" :class="isOverdue(data.session_end) ? 'text-red-400' : 'text-gray-400'" x-text="isOverdue(data.session_end) ? 'Час вийшов!' : 'залишилось на льоду'"></span>
+                                </div>
+                            </template>
                             <template x-if="!data.session_end">
                                 <span class="text-sm text-gray-300" x-text="'Тривалість: ' + (data.duration_minutes || '—') + ' хв'"></span>
                             </template>

@@ -1,14 +1,9 @@
 from datetime import datetime
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models import QueueStatus
-from pydantic import BaseModel, Field
-
-
-class CancelTicketRequest(BaseModel):
-    reason: str = Field(..., min_length=3, description="Причина скасування є обов'язковою")
 
 
 class CreateQueueRequest(BaseModel):
@@ -18,14 +13,23 @@ class CreateQueueRequest(BaseModel):
     comment: Optional[str] = None
 
 
+class CancelTicketRequest(BaseModel):
+    reason: str = Field(..., min_length=3, description="Причина скасування є обов'язковою")
+
+
 class ExtendSessionRequest(BaseModel):
     minutes: int = 15  # За замовчуванням +15 хвилин
 
 
 class InventoryItemCreate(BaseModel):
-    size: str
-    total_stock: int
-    maintenance_count: int = 0
+    size: str = Field(..., max_length=64)
+    total_stock: int = Field(..., ge=0)
+    maintenance_count: int = Field(0, ge=0)
+
+
+class InventoryItemUpdate(BaseModel):
+    total_stock: Optional[int] = None
+    maintenance_count: Optional[int] = None
 
 
 class InventoryUpdatePayload(BaseModel):
@@ -34,13 +38,13 @@ class InventoryUpdatePayload(BaseModel):
     maintenance_count: Optional[int] = None
 
 
-class InventoryItemUpdate(BaseModel):
-    total_stock: Optional[int] = None
-    maintenance_count: Optional[int] = None
-
-
 class LoginRequest(BaseModel):
     pin: str
+
+
+class MassExtendRequest(BaseModel):
+    minutes: int
+    admin_password: str
 
 
 class QueueItemResponse(BaseModel):
@@ -52,7 +56,11 @@ class QueueItemResponse(BaseModel):
     shoe_sizes: List[str]
     comment: Optional[str] = None
     status: QueueStatus
+
+    # time
+    called_at: Optional[datetime] = None
     duration_minutes: int
+    overtime_stopped_at: Optional[datetime] = None
     session_start: Optional[datetime]
     session_end: Optional[datetime]
 
@@ -62,12 +70,6 @@ class QueueItemResponse(BaseModel):
         return [str(item) for item in v] if isinstance(v, list) else v
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class UpdateTicketRequest(BaseModel):
-    duration_minutes: int | None = None
-    shoe_sizes: List[str] | None = None
-    comment: Optional[str] = None
 
 
 class UserStatusResponse(BaseModel):
@@ -82,3 +84,9 @@ class UserStatusResponse(BaseModel):
     @classmethod
     def coerce_shoe_sizes(cls, v: Any) -> List[str]:
         return [str(item) for item in v] if isinstance(v, list) else v
+
+
+class UpdateTicketRequest(BaseModel):
+    duration_minutes: int | None = None
+    shoe_sizes: List[str] | None = None
+    comment: Optional[str] = None

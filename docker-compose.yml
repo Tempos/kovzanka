@@ -5,10 +5,40 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=kovzanka
+      - MYSQL_PASSWORD=secret
+      - MYSQL_DATABASE=kovzanka_db
     env_file:
       - .env
     volumes:
       - .:/app
       - /app/.venv
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: kovzanka_mysql
+    restart: unless-stopped
     environment:
-      - PYTHONUNBUFFERED=1
+      MYSQL_ROOT_PASSWORD: rootsecret
+      MYSQL_DATABASE: kovzanka_db
+      MYSQL_USER: kovzanka
+      MYSQL_PASSWORD: secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootsecret"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql_data:

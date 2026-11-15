@@ -22,24 +22,6 @@ function displayApp() {
             } else if (document.exitFullscreen) {document.exitFullscreen();}
         },
 
-        // --- TIMERS AND COUNTDOWN ---
-        getRemainingTime(sessionEndIso) {
-            const end = typeof parseServerDate === 'function' ? parseServerDate(sessionEndIso) : new Date(sessionEndIso)
-            if (!end) return null
-            const diffMs = end.getTime() - this.now
-            if (diffMs <= 0) {
-                const overdueMs = Math.abs(diffMs)
-                return '+' + formatMs(overdueMs)
-            }
-            return formatMs(diffMs)
-        },
-
-        isOverdue(sessionEndIso) {
-            if (!sessionEndIso) return false
-            const end = typeof parseServerDate === 'function' ? parseServerDate(sessionEndIso) : new Date(sessionEndIso)
-            return end ? (this.now - end.getTime()) > 0 : false
-        },
-
         // --- LIFECYCLE ---
         init() {
             this.fetchQueue()

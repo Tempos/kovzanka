@@ -272,39 +272,70 @@ function kasa2App() {
             } catch (e) {console.error("Помилка відновлення статусу:", e)}
         },
 
-        // --- TIMERS & TIME FORMATTING ---
-        getOverdueMinutes(sessionEndIso) {
-            if (!sessionEndIso) return 0
-            const endTime = parseServerDate(sessionEndIso)?.getTime()
-            if (!endTime) return 0
-            const diffMinutes = Math.floor((this.now - endTime) / (1000 * 60))
-            return diffMinutes > 0 ? diffMinutes : 0
-        },
-
-        getRemainingTime(sessionEndIso) {
-            const end = parseServerDate(sessionEndIso)
-            if (!end) return null
-            const diffMs = end.getTime() - this.now
-            if (diffMs <= 0) return null
-            return formatMs(diffMs)
-        },
-
-        getOverdueTime(sessionEndIso) {
-            const end = parseServerDate(sessionEndIso)
-            if (!end) return null
-            const diffMs = this.now - end.getTime()
-            if (diffMs <= 0) return null
-            return formatMs(diffMs)
+        async toggleStopTimer(itemId) {
+            try {
+                const response = await fetch(`/api/queue/${itemId}/stop-timer`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"}
+                })
+                if (!response.ok) await this.fetchQueue()
+            } catch (e) {
+                console.error("Помилка зупинки таймера:", e)
+                await this.fetchQueue()
+            }
         },
 
         getTimeDisplay(item) {
             const isActive = item.status === "ОБСЛУГОВУЄТЬСЯ" || item.status === "SERVED"
             if (isActive && item.session_end) {
-                const remaining = this.getRemainingTime(item.session_end)
+                const remaining = getRemainingTime(item.session_end, item, this.now)
                 return remaining ?? "00:00"
             }
             return item.duration_minutes ? item.duration_minutes + " хв" : "—"
         },
+
+        techBreakModal: {
+            open: false,
+            password: '',
+            error: ''
+        },
+
+        async submitTechBreak() {
+            if (!this.techBreakModal.password) return;
+            try {
+                const res = await fetch(`/api/queue/mass-extend`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({minutes: 10, admin_password: this.techBreakModal.password})
+                });
+                if (res.ok) {
+                    this.techBreakModal.open = false;
+                    this.techBreakModal.password = '';
+                    await this.fetchQueue();
+                } else {
+                    const err = await res.json();
+                    this.techBreakModal.error = err.detail || 'Невірний пароль або помилка сервера';
+                }
+            } catch (e) {
+                console.error("Помилка масового додавання часу:", e);
+                this.techBreakModal.error = 'Помилка мережі';
+            }
+        },
+
+        async skipLacing(itemId) {
+            try {
+                const response = await fetch(`/api/queue/${itemId}/skip-lacing`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"}
+                })
+                if (!response.ok) await this.fetchQueue()
+            } catch (e) {
+                console.error("Помилка запуску основного часу:", e)
+                await this.fetchQueue()
+            }
+        },
+
+        getSessionPhase(item) {return getSessionPhase(item, this.now)},
 
         // --- LIFECYCLE ---
         async init() {

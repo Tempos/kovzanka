@@ -3,8 +3,8 @@ import secrets
 from typing import Optional
 
 from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from starlette.responses import RedirectResponse
 
 from app.limiter import limiter
 

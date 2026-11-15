@@ -2,105 +2,19 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.auth import is_authenticated_kasa2, verify_kasa1, verify_kasa2
+from app.api.auth import KASA2_PIN, verify_kasa1, verify_kasa2
 from app.bot import send_telegram_notification
 from app.db import DBSession, get_db
-from app.inventory import calculate_live_inventory
-from app.models import QueueItem, QueueStatus, SkateInventory
-from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, InventoryItemCreate, \
-    InventoryUpdatePayload, QueueItemResponse, UpdateTicketRequest, UserStatusResponse
+from app.models import QueueItem, QueueStatus
+from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, MassExtendRequest, \
+    QueueItemResponse, UpdateTicketRequest
 from app.ws_manager import manager
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
-
-
-@router.post("/inventory", dependencies=[Depends(verify_kasa2)])
-async def create_inventory_item(payload: InventoryItemCreate, db: Session = Depends(get_db)):
-    if db.query(SkateInventory).filter(SkateInventory.size == payload.size).first():
-        raise HTTPException(status_code=400, detail="Такий розмір вже існує в базі")
-
-    item = SkateInventory(
-        size=payload.size,
-        total_stock=payload.total_stock,
-        maintenance_count=payload.maintenance_count
-    )
-    db.add(item)
-    db.commit()
-    db.refresh(item)
-
-    await manager.broadcast("INVENTORY_UPDATED")
-    return item
-
-
-@router.patch("/inventory", dependencies=[Depends(verify_kasa2)])
-async def update_inventory_item(payload: InventoryUpdatePayload, db: Session = Depends(get_db)):
-    if not (item := db.query(SkateInventory).filter(SkateInventory.size == payload.size).first()):
-        raise HTTPException(status_code=404, detail="Розмір не знайдено")
-
-    new_total = payload.total_stock if payload.total_stock is not None else item.total_stock
-    new_maint = payload.maintenance_count if payload.maintenance_count is not None else item.maintenance_count
-
-    # Enforce total-stock and maintenance-count invariant on the server
-    if new_maint > new_total:
-        raise HTTPException(
-            status_code=400,
-            detail="Кількість ковзанів на ремонті не може перевищувати загальну кількість!"
-        )
-
-    if payload.total_stock is not None:
-        item.total_stock = max(0, payload.total_stock)
-    if payload.maintenance_count is not None:
-        item.maintenance_count = max(0, payload.maintenance_count)
-
-    db.commit()
-    await manager.broadcast("INVENTORY_UPDATED")
-    return item
-
-
-@router.get("/inventory")
-def get_inventory_status(request: Request, db: Session = Depends(get_db)):
-    """Exposes current counts to cashiers for inventory tracking."""
-    active_skaters = db.query(QueueItem).filter(
-        QueueItem.status.in_([QueueStatus.WAITING, QueueStatus.CALLING, QueueStatus.SERVED])
-    ).all()
-
-    db_inventory = db.query(SkateInventory).all()
-    live_inventory = calculate_live_inventory(active_skaters, db_inventory)
-
-    # Check if the requester is authenticated as Kasa 2 / Admin
-    kasa2_cookie = request.cookies.get("kasa2_session")
-    is_admin = is_authenticated_kasa2(kasa2_cookie)
-
-    for item in db_inventory:
-        if item.size not in live_inventory:
-            live_inventory[item.size] = {
-                "total": item.total_stock,
-                "in_use": 0,
-                "available": max(0, item.total_stock - item.maintenance_count),
-                "in_queue": 0,
-                "target_timestamp": None
-            }
-
-        live_inventory[item.size]["total"] = item.total_stock
-
-        if is_admin:  # Expose maintenance_count strictly to authenticated admin/staff
-            live_inventory[item.size]["maintenance_count"] = item.maintenance_count
-
-    return live_inventory
-
-
-@router.delete("/inventory", dependencies=[Depends(verify_kasa2)])
-async def delete_inventory_item(size: str, db: Session = Depends(get_db)):
-    if not (item := db.query(SkateInventory).filter(SkateInventory.size == size).first()):
-        raise HTTPException(status_code=404, detail="Розмір не знайдено")
-
-    item.is_deleted = True
-    db.commit()
-    await manager.broadcast("INVENTORY_UPDATED")
-    return {"success": True}
 
 
 @router.websocket("/ws/queue")
@@ -137,11 +51,40 @@ def get_full_queue(db: DBSession):
     return active_items + recent_closed
 
 
+@router.patch("/queue/{item_id}", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
+async def update_ticket_details(item_id: int, payload: UpdateTicketRequest, db: Session = Depends(get_db)):
+    if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
+        raise HTTPException(status_code=404, detail="Запис не знайдено")
+
+    allowed_statuses = [QueueStatus.WAITING, QueueStatus.CALLING, QueueStatus.SERVED, "ЧЕКАЄ", "ВИКЛИКАЄТЬСЯ",
+                        "ОБСЛУГОВУЄТЬСЯ"]
+    if item.status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Неможливо редагувати квиток у поточному статусі")
+
+    if payload.duration_minutes is not None:
+        old_duration = item.duration_minutes
+        item.duration_minutes = payload.duration_minutes
+        if item.session_end:
+            # Preserve any remaining lacing buffer by shifting session_end by the duration delta
+            diff = payload.duration_minutes - old_duration
+            item.session_end = item.session_end + timedelta(minutes=diff)
+
+    if payload.shoe_sizes is not None:
+        item.shoe_sizes = payload.shoe_sizes
+        item.people_count = len(payload.shoe_sizes)
+
+    if payload.comment is not None:
+        item.comment = payload.comment.strip() or None
+
+    db.commit()
+    db.refresh(item)
+    await manager.broadcast("QUEUE_UPDATED")
+    return item
+
+
 @router.post("/queue", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa1)])
 async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
-    last_ticket = db.query(QueueItem).order_by(QueueItem.id.desc()).first()
-    next_number = (last_ticket.ticket_number + 1) if last_ticket else 101
-
+    # 1. Look up existing Telegram chat ID based on phone number
     norm_phone = "".join(filter(str.isdigit, req.phone))
     norm_phone_key = norm_phone[-9:] if len(norm_phone) >= 9 else norm_phone
 
@@ -155,48 +98,31 @@ async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
                 existing_chat_id = r.telegram_chat_id
                 break
 
-    item = QueueItem(
-        ticket_number=next_number,
-        phone=req.phone,
-        people_count=len(req.shoe_sizes),
-        shoe_sizes=req.shoe_sizes,
-        duration_minutes=req.duration_minutes,
-        comment=req.comment,
-        telegram_chat_id=existing_chat_id,
-    )
-    db.add(item)
-    db.commit()
-    db.refresh(item)
+    # 2. Retry loop for atomic ticket number allocation under concurrency
+    for _ in range(5):
+        last_ticket = db.query(QueueItem).order_by(QueueItem.id.desc()).first()
+        next_number = (last_ticket.ticket_number + 1) if last_ticket else 101
 
-    await manager.broadcast("QUEUE_UPDATED")
-    return item
+        item = QueueItem(
+            ticket_number=next_number,
+            phone=req.phone,
+            people_count=len(req.shoe_sizes),
+            shoe_sizes=req.shoe_sizes,
+            duration_minutes=req.duration_minutes,
+            comment=req.comment,
+            telegram_chat_id=existing_chat_id,
+        )
+        db.add(item)
+        try:
+            db.commit()
+            db.refresh(item)
+            await manager.broadcast("QUEUE_UPDATED")
+            return item
+        except IntegrityError:
+            db.rollback()
+            continue
 
-
-@router.patch("/queue/{item_id}", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
-async def update_ticket_details(item_id: int, payload: UpdateTicketRequest, db: Session = Depends(get_db)):
-    if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
-        raise HTTPException(status_code=404, detail="Запис не знайдено")
-
-    allowed_statuses = [QueueStatus.WAITING, QueueStatus.CALLING, QueueStatus.SERVED, "ЧЕКАЄ", "ВИКЛИКАЄТЬСЯ", "ОБСЛУГОВУЄТЬСЯ"]
-    if item.status not in allowed_statuses:
-        raise HTTPException(status_code=400, detail="Неможливо редагувати квиток у поточному статусі")
-
-    if payload.duration_minutes is not None:
-        item.duration_minutes = payload.duration_minutes
-        if item.session_start:
-            item.session_end = item.session_start + timedelta(minutes=payload.duration_minutes)
-
-    if payload.shoe_sizes is not None:
-        item.shoe_sizes = payload.shoe_sizes
-        item.people_count = len(payload.shoe_sizes)
-
-    if payload.comment is not None:
-        item.comment = payload.comment.strip() if payload.comment.strip() else None
-
-    db.commit()
-    db.refresh(item)
-    await manager.broadcast("QUEUE_UPDATED")
-    return item
+    raise HTTPException(status_code=500, detail="Could not allocate unique ticket number due to high concurrency.")
 
 
 @router.post("/queue/{item_id}/cancel", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
@@ -212,52 +138,13 @@ async def cancel_ticket_with_reason(item_id: int, payload: CancelTicketRequest, 
     # Очищаємо попередні мітки [СКАСОВАНО], щоб залишалася лише актуальна причина та оригінальний коментар
     base_comment = item.comment or ""
     if base_comment:
-        base_comment = re.sub(r'\[СКАСОВАНО\][^\|]*(\|\s*)?', '', base_comment).strip(' |')
+        base_comment = re.sub(r'\[СКАСОВАНО][^|]*(\|\s*)?', '', base_comment).strip(' |')
 
     new_cancellation = f"[СКАСОВАНО] {payload.reason.strip()}"
     item.comment = f"{new_cancellation} | {base_comment}" if base_comment else new_cancellation
 
     db.commit()
     db.refresh(item)
-    await manager.broadcast("QUEUE_UPDATED")
-    return item
-
-
-@router.patch("/queue/{item_id}/status", response_model=QueueItemResponse)
-async def update_status(item_id: int, status: QueueStatus, db: DBSession):
-    if not (item := db.get(QueueItem, item_id)):
-        raise HTTPException(status_code=404, detail="Запис не знайдено")
-
-    old_status = item.status
-    item.status = status
-
-    if status == QueueStatus.SERVED and not item.session_start:
-        now = datetime.now(timezone.utc)
-        item.session_start = now
-        item.session_end = now + timedelta(minutes=item.duration_minutes)
-
-    db.commit()
-    db.refresh(item)
-
-    print(f"[DEBUG STATUS] Ticket #{item.ticket_number} (ID: {item.id}) "
-          f"| Old: {old_status} -> New: {status} | Chat ID: {item.telegram_chat_id}")
-
-    is_calling = str(status) in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]
-    was_not_calling = str(old_status) not in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]
-
-    if is_calling and was_not_calling and item.telegram_chat_id:
-        try:
-            await send_telegram_notification(
-                str(item.telegram_chat_id),
-                f"🎟️ Шановний гість! Ваш талон **#{item.ticket_number}** викликається на видачу ковзанів."
-                f" Будь ласка, підійдіть до стійки видачі!"
-            )
-            print(f"[SUCCESS] Telegram notification sent to chat_id: {item.telegram_chat_id}")
-        except Exception as e:
-            print(f"[ERROR] Failed to send Telegram notification: {e}")
-    else:
-        print("[DEBUG] Notification skipped (conditions not met or no chat_id)")
-
     await manager.broadcast("QUEUE_UPDATED")
     return item
 
@@ -274,6 +161,8 @@ async def extend_session(item_id: int, payload: ExtendSessionRequest, db: Sessio
     if item.session_end:
         item.session_end += timedelta(minutes=payload.minutes)
 
+    item.overtime_stopped_at = None
+
     db.commit()
     db.refresh(item)
 
@@ -281,84 +170,9 @@ async def extend_session(item_id: int, payload: ExtendSessionRequest, db: Sessio
     return item
 
 
-@router.get("/public/status/{tracking_token}", response_model=UserStatusResponse)
-def get_user_status(tracking_token: str, db: DBSession):
-    if not (item := db.query(QueueItem).filter(QueueItem.tracking_token == tracking_token).first()):
-        raise HTTPException(status_code=404, detail="Запис не знайдено")
-
-    position = (
-        db.query(QueueItem)
-        .filter(QueueItem.status == QueueStatus.WAITING, QueueItem.id < item.id)
-        .count()
-    )
-
-    estimated_wait = _calculate_ticket_wait_time(item, db, position)
-
-    return UserStatusResponse(
-        ticket_number=item.ticket_number,
-        status=item.status,
-        people_count=item.people_count,
-        shoe_sizes=item.shoe_sizes,
-        position_in_queue=position,
-        estimated_wait_minutes=estimated_wait,
-    )
-
-
-def _calculate_ticket_wait_time(item: QueueItem, db: Session, position: int) -> int:
-    """Calculates wait time considering both queue position and inventory session end times."""
-    active_skaters = db.query(QueueItem).filter(
-        QueueItem.status.in_([
-            QueueStatus.WAITING,
-            QueueStatus.CALLING,
-            QueueStatus.SERVED
-        ])
-    ).all()
-    db_inventory = db.query(SkateInventory).all()
-    live_inventory = calculate_live_inventory(active_skaters, db_inventory)
-
-    max_wait = position * 5
-    for raw_size in (item.shoe_sizes or []):
-        size_key = str(raw_size)
-        if size_key not in live_inventory:
-            candidate = f"{size_key} (фігурні)"
-            if candidate in live_inventory:
-                size_key = candidate
-
-        if size_key in live_inventory:
-            mins = live_inventory[size_key].get("next_available_in_mins")
-            if mins is not None and mins > max_wait:
-                max_wait = mins
-    return max_wait
-
-
-@router.get("/public/status/ticket/{ticket}", response_model=UserStatusResponse)
-def get_user_status_by_ticket(ticket: int, db: DBSession):
-    if not (item := (db.query(QueueItem).filter(QueueItem.ticket_number == ticket).first())):
-        raise HTTPException(status_code=404, detail="Запис не знайдено")
-
-    position = 0
-    if item.status == QueueStatus.WAITING:
-        position = (
-            db.query(QueueItem)
-            .filter(QueueItem.status == QueueStatus.WAITING, QueueItem.id < item.id)
-            .count()
-        )
-
-    estimated_wait = _calculate_ticket_wait_time(item, db, position)
-
-    return UserStatusResponse(
-        ticket_number=item.ticket_number,
-        status=item.status,
-        people_count=item.people_count,
-        shoe_sizes=item.shoe_sizes,
-        position_in_queue=position,
-        estimated_wait_minutes=estimated_wait,
-    )
-
-
-@router.post("/queue/{ticket_id}/revert", dependencies=[Depends(verify_kasa2)])
-def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
-    if not (ticket := db.query(QueueItem).filter(QueueItem.id == ticket_id).first()):
+@router.post("/queue/{item_id}/revert", dependencies=[Depends(verify_kasa2)])
+async def revert_ticket_status(item_id: int, db: Session = Depends(get_db)):
+    if not (ticket := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
         raise HTTPException(status_code=404, detail="Ticket not found")
 
     # Step backward through the workflow states
@@ -366,19 +180,145 @@ def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
         ticket.status = QueueStatus.SERVED
     elif ticket.status == QueueStatus.SERVED:
         ticket.status = QueueStatus.CALLING
+        ticket.called_at = datetime.now(timezone.utc)
         ticket.session_start = None
         ticket.session_end = None
+        ticket.overtime_stopped_at = None
     elif ticket.status == QueueStatus.CALLING:
         ticket.status = QueueStatus.WAITING
+        ticket.called_at = None
         ticket.session_start = None
         ticket.session_end = None
+        ticket.overtime_stopped_at = None
     elif ticket.status == QueueStatus.CANCELLED:
         ticket.status = QueueStatus.WAITING
+        ticket.called_at = None
         ticket.session_start = None
         ticket.session_end = None
+        ticket.overtime_stopped_at = None
     else:
         raise HTTPException(status_code=400, detail="Цей статус не можна відкотити")
 
     db.commit()
     db.refresh(ticket)
+    await manager.broadcast("QUEUE_UPDATED")
     return ticket
+
+
+@router.patch("/queue/{item_id}/status", response_model=QueueItemResponse)
+async def update_status(item_id: int, status: QueueStatus, db: DBSession):
+    if not (item := db.get(QueueItem, item_id)):
+        raise HTTPException(status_code=404, detail="Запис не знайдено")
+
+    old_status = item.status
+    item.status = status
+    now = datetime.now(timezone.utc)
+
+    is_calling = str(status) in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]
+    was_not_calling = str(old_status) not in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]
+
+    if is_calling and not item.called_at:
+        item.called_at = now
+
+    if status == QueueStatus.SERVED and not item.session_start:
+        item.session_start = now
+        # Add 5 minutes lacing grace window before the main skating duration begins
+        item.session_end = now + timedelta(minutes=5 + item.duration_minutes)
+
+    db.commit()
+    db.refresh(item)
+
+    if is_calling and was_not_calling and item.telegram_chat_id:
+        try:
+            await send_telegram_notification(
+                str(item.telegram_chat_id),
+                f"🎟️ Шановний гість! Ваш талон **#{item.ticket_number}** викликається на видачу ковзанів."
+                f" Будь ласка, підійдіть до стійки видачі протягом 5 хвилин!"
+            )
+        except Exception as e:
+            print(f"[ERROR] Failed to send Telegram notification: {e}")
+
+    await manager.broadcast("QUEUE_UPDATED")
+    return item
+
+
+@router.post("/queue/{item_id}/skip-lacing", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
+async def skip_lacing_window(item_id: int, db: Session = Depends(get_db)):
+    """Immediately ends the 5-minute lacing window and starts the main ice timer."""
+    if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
+        raise HTTPException(status_code=404, detail="Запис не знайдено")
+
+    if item.status not in [QueueStatus.SERVED, "SERVED", "ОБСЛУГОВУЄТЬСЯ"]:
+        raise HTTPException(status_code=400, detail="Можна запустити лише для активного сеансу")
+
+    now = datetime.now(timezone.utc)
+    item.session_end = now + timedelta(minutes=item.duration_minutes)
+
+    db.commit()
+    db.refresh(item)
+    await manager.broadcast("QUEUE_UPDATED")
+    return item
+
+
+@router.post("/queue/{item_id}/stop-timer", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
+async def toggle_stop_timer(item_id: int, db: Session = Depends(get_db)):
+    """Зупиняє або відновлює нарахування часу / overtime до остаточного закриття квитка."""
+    if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
+        raise HTTPException(status_code=404, detail="Запис не знайдено")
+
+    if item.status not in [QueueStatus.SERVED, "SERVED", "ОБСЛУГОВУЄТЬСЯ"]:
+        raise HTTPException(status_code=400, detail="Зупинити таймер можна лише для активного сеансу")
+
+    now = datetime.now(timezone.utc)
+    if item.overtime_stopped_at is None:
+        item.overtime_stopped_at = now
+    else:
+        # Якщо відновлюємо таймер після паузи — зсуваємо session_end на тривалість паузи
+        stopped_at = item.overtime_stopped_at
+        if stopped_at.tzinfo is None:
+            stopped_at = stopped_at.replace(tzinfo=timezone.utc)
+        paused_delta = now - stopped_at
+        if item.session_end:
+            item.session_end += paused_delta
+        item.overtime_stopped_at = None
+
+    db.commit()
+    db.refresh(item)
+    await manager.broadcast("QUEUE_UPDATED")
+    return item
+
+
+@router.post("/queue/mass-extend", dependencies=[Depends(verify_kasa2)])
+async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends(get_db)):
+    if payload.admin_password != KASA2_PIN:
+        raise HTTPException(status_code=403, detail="Невірний пароль адміністратора")
+
+    if payload.minutes <= 0:
+        raise HTTPException(status_code=400, detail="Кількість хвилин має бути більшою за нуль")
+
+    now = datetime.now(timezone.utc)
+    updated_count = 0
+
+    active_items = db.query(QueueItem).filter(
+        QueueItem.status.in_([
+            QueueStatus.CALLING, "CALLING", "ВИКЛИКАЄТЬСЯ",
+            QueueStatus.SERVED, "SERVED", "ОБСЛУГОВУЄТЬСЯ"
+        ])
+    ).all()
+
+    for item in active_items:
+        if str(item.status) in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]:
+            item.called_at += timedelta(minutes=payload.minutes) if item.called_at else now
+        else:
+            item.duration_minutes += payload.minutes
+            if item.session_end:
+                item.session_end += timedelta(minutes=payload.minutes)
+            else:
+                item.session_start = item.session_start or now
+                item.session_end = now + timedelta(minutes=item.duration_minutes)
+
+            item.overtime_stopped_at = None
+        updated_count += 1
+    db.commit()
+    await manager.broadcast("QUEUE_UPDATED")
+    return {"status": "success", "updated_count": updated_count}
