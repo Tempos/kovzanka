@@ -57,6 +57,8 @@ class QueueItemResponse(BaseModel):
     shoe_sizes: List[str]
     comment: Optional[str] = None
     status: QueueStatus
+
+    called_at: Optional[datetime] = None
     duration_minutes: int
     session_start: Optional[datetime]
     session_end: Optional[datetime]

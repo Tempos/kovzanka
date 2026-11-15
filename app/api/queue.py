@@ -177,14 +177,18 @@ async def update_ticket_details(item_id: int, payload: UpdateTicketRequest, db: 
     if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
 
-    allowed_statuses = [QueueStatus.WAITING, QueueStatus.CALLING, QueueStatus.SERVED, "ЧЕКАЄ", "ВИКЛИКАЄТЬСЯ", "ОБСЛУГОВУЄТЬСЯ"]
+    allowed_statuses = [QueueStatus.WAITING, QueueStatus.CALLING, QueueStatus.SERVED, "ЧЕКАЄ", "ВИКЛИКАЄТЬСЯ",
+                        "ОБСЛУГОВУЄТЬСЯ"]
     if item.status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Неможливо редагувати квиток у поточному статусі")
 
     if payload.duration_minutes is not None:
+        old_duration = item.duration_minutes
         item.duration_minutes = payload.duration_minutes
-        if item.session_start:
-            item.session_end = item.session_start + timedelta(minutes=payload.duration_minutes)
+        if item.session_end:
+            # Preserve any remaining lacing buffer by shifting session_end by the duration delta
+            diff = payload.duration_minutes - old_duration
+            item.session_end = item.session_end + timedelta(minutes=diff)
 
     if payload.shoe_sizes is not None:
         item.shoe_sizes = payload.shoe_sizes
@@ -230,34 +234,50 @@ async def update_status(item_id: int, status: QueueStatus, db: DBSession):
 
     old_status = item.status
     item.status = status
-
-    if status == QueueStatus.SERVED and not item.session_start:
-        now = datetime.now(timezone.utc)
-        item.session_start = now
-        item.session_end = now + timedelta(minutes=item.duration_minutes)
-
-    db.commit()
-    db.refresh(item)
-
-    print(f"[DEBUG STATUS] Ticket #{item.ticket_number} (ID: {item.id}) "
-          f"| Old: {old_status} -> New: {status} | Chat ID: {item.telegram_chat_id}")
+    now = datetime.now(timezone.utc)
 
     is_calling = str(status) in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]
     was_not_calling = str(old_status) not in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]
+
+    if is_calling and not item.called_at:
+        item.called_at = now
+
+    if status == QueueStatus.SERVED and not item.session_start:
+        item.session_start = now
+        # Add 5 minutes lacing grace window before the main skating duration begins
+        item.session_end = now + timedelta(minutes=5 + item.duration_minutes)
+
+    db.commit()
+    db.refresh(item)
 
     if is_calling and was_not_calling and item.telegram_chat_id:
         try:
             await send_telegram_notification(
                 str(item.telegram_chat_id),
                 f"🎟️ Шановний гість! Ваш талон **#{item.ticket_number}** викликається на видачу ковзанів."
-                f" Будь ласка, підійдіть до стійки видачі!"
+                f" Будь ласка, підійдіть до стійки видачі протягом 5 хвилин!"
             )
-            print(f"[SUCCESS] Telegram notification sent to chat_id: {item.telegram_chat_id}")
         except Exception as e:
             print(f"[ERROR] Failed to send Telegram notification: {e}")
-    else:
-        print("[DEBUG] Notification skipped (conditions not met or no chat_id)")
 
+    await manager.broadcast("QUEUE_UPDATED")
+    return item
+
+
+@router.post("/queue/{item_id}/skip-lacing", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
+async def skip_lacing_window(item_id: int, db: Session = Depends(get_db)):
+    """Immediately ends the 5-minute lacing window and starts the main ice timer."""
+    if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
+        raise HTTPException(status_code=404, detail="Запис не знайдено")
+
+    if item.status not in [QueueStatus.SERVED, "SERVED", "ОБСЛУГОВУЄТЬСЯ"]:
+        raise HTTPException(status_code=400, detail="Можна запустити лише для активного сеансу")
+
+    now = datetime.now(timezone.utc)
+    item.session_end = now + timedelta(minutes=item.duration_minutes)
+
+    db.commit()
+    db.refresh(item)
     await manager.broadcast("QUEUE_UPDATED")
     return item
 
@@ -357,7 +377,7 @@ def get_user_status_by_ticket(ticket: int, db: DBSession):
 
 
 @router.post("/queue/{ticket_id}/revert", dependencies=[Depends(verify_kasa2)])
-def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
+async def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
     if not (ticket := db.query(QueueItem).filter(QueueItem.id == ticket_id).first()):
         raise HTTPException(status_code=404, detail="Ticket not found")
 
@@ -366,14 +386,17 @@ def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
         ticket.status = QueueStatus.SERVED
     elif ticket.status == QueueStatus.SERVED:
         ticket.status = QueueStatus.CALLING
+        ticket.called_at = datetime.now(timezone.utc)
         ticket.session_start = None
         ticket.session_end = None
     elif ticket.status == QueueStatus.CALLING:
         ticket.status = QueueStatus.WAITING
+        ticket.called_at = None
         ticket.session_start = None
         ticket.session_end = None
     elif ticket.status == QueueStatus.CANCELLED:
         ticket.status = QueueStatus.WAITING
+        ticket.called_at = None
         ticket.session_start = None
         ticket.session_end = None
     else:
@@ -381,6 +404,7 @@ def revert_ticket_status(ticket_id: int, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(ticket)
+    await manager.broadcast("QUEUE_UPDATED")
     return ticket
 
 
@@ -392,19 +416,33 @@ async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends
     if payload.minutes <= 0:
         raise HTTPException(status_code=400, detail="Кількість хвилин має бути більшою за нуль")
 
-    active_served_items = db.query(QueueItem).filter(
-        QueueItem.status.in_([QueueStatus.SERVED, "SERVED", "ОБСЛУГОВУЄТЬСЯ"])
+    now = datetime.now(timezone.utc)
+    updated_count = 0
+
+    # Отримуємо всі активні квитки у будь-якому робочому стані (CALLING або SERVED)
+    active_items = db.query(QueueItem).filter(
+        QueueItem.status.in_([
+            QueueStatus.CALLING, "CALLING", "ВИКЛИКАЄТЬСЯ",
+            QueueStatus.SERVED, "SERVED", "ОБСЛУГОВУЄТЬСЯ"
+        ])
     ).all()
 
-    for item in active_served_items:
-        item.duration_minutes += payload.minutes
-        if item.session_end:
-            item.session_end += timedelta(minutes=payload.minutes)
-        else:
-            now = datetime.now(timezone.utc)
-            item.session_start = item.session_start or now
-            item.session_end = now + timedelta(minutes=item.duration_minutes)
+    for item in active_items:
+        is_calling = str(item.status) in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]
 
+        if is_calling:
+            if item.called_at:
+                item.called_at += timedelta(minutes=payload.minutes)
+            else:
+                item.called_at = now
+        else:
+            item.duration_minutes += payload.minutes
+            if item.session_end:
+                item.session_end += timedelta(minutes=payload.minutes)
+            else:
+                item.session_start = item.session_start or now
+                item.session_end = now + timedelta(minutes=item.duration_minutes)
+        updated_count += 1
     db.commit()
     await manager.broadcast("QUEUE_UPDATED")
-    return {"status": "success", "updated_count": len(active_served_items)}
+    return {"status": "success", "updated_count": updated_count}

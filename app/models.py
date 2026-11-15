@@ -47,6 +47,7 @@ class QueueItem(Base):
     comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[QueueStatus] = mapped_column(Enum(QueueStatus), default=QueueStatus.WAITING, index=True)
 
+    called_at = Column(DateTime, nullable=True)
     duration_minutes: Mapped[int] = mapped_column(Integer, default=60)
     session_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     session_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

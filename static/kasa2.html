@@ -86,20 +86,51 @@
                             </div>
                         </td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-mono font-bold">
-                            <div class="flex flex-col">
-                            <span :class="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && item.session_end ? 'text-blue-700' : 'text-gray-600'"
-                                  x-text="getTimeDisplay(item)"></span>
-                                <template x-if="item.session_end">
-                                    <span class="text-xs text-blue-600" x-text="'до ' + formatTime(item.session_end)"></span>
-                                </template>
-                                <template x-if="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && getOverdueTime(item.session_end)">
-                                <span :title="'Протерміновано на ' + getOverdueTime(item.session_end)"
-                                      class="mt-1 inline-flex items-center w-max px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 animate-pulse cursor-help">
-                                    ⏱️ +<span x-text="getOverdueTime(item.session_end)"></span>
-                                </span>
-                                </template>
-                            </div>
-                        </td>
+    <div class="flex flex-col gap-1" x-data="{ get phase() { return getSessionPhase(item) } }">
+        <!-- Phase 1: Calling (5 min arrival window) -->
+        <template x-if="phase && phase.phase === 'CALLING'">
+            <div class="flex flex-col">
+                <span :class="phase.overdue ? 'text-red-600 animate-pulse' : 'text-amber-600'"
+                      x-text="phase.label + ': ' + (phase.overdue ? '+' : '') + phase.time"></span>
+                <span class="text-[11px] text-gray-400" x-text="'Сеанс: ' + item.duration_minutes + ' хв'"></span>
+            </div>
+        </template>
+
+        <!-- Phase 2: Lacing up (5 min grace window before ice time) -->
+        <template x-if="phase && phase.phase === 'LACING'">
+            <div class="flex flex-col">
+                <div class="inline-flex items-center gap-1.5">
+                    <span class="px-2 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-200 text-xs"
+                          x-text="phase.label + ' ' + phase.time"></span>
+                    <button @click="skipLacing(item.id)"
+                            title="Почати основний час катання зараз"
+                            class="px-1.5 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold transition">
+                        ⏭ Старт
+                    </button>
+                </div>
+                <span class="text-[11px] text-blue-600 mt-0.5"
+                      x-text="item.duration_minutes + ' хв • до ' + formatTime(item.session_end)"></span>
+            </div>
+        </template>
+
+        <!-- Phase 3: On Ice (or default fallback) -->
+        <template x-if="!phase || phase.phase === 'SKATING'">
+            <div class="flex flex-col">
+                <span :class="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && item.session_end ? 'text-blue-700' : 'text-gray-600'"
+                      x-text="getTimeDisplay(item)"></span>
+                <template x-if="item.session_end">
+                    <span class="text-xs text-blue-600" x-text="'до ' + formatTime(item.session_end)"></span>
+                </template>
+                <template x-if="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && getOverdueTime(item.session_end)">
+                    <span :title="'Протерміновано на ' + getOverdueTime(item.session_end)"
+                          class="mt-1 inline-flex items-center w-max px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 animate-pulse cursor-help">
+                        ⏱️ +<span x-text="getOverdueTime(item.session_end)"></span>
+                    </span>
+                </template>
+            </div>
+        </template>
+    </div>
+</td>
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
                         <span :class="{
                                   'bg-yellow-100 text-yellow-800': item.status === 'ЧЕКАЄ',

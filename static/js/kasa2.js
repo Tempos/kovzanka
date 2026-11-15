@@ -334,6 +334,21 @@ function kasa2App() {
             }
         },
 
+        async skipLacing(itemId) {
+            try {
+                const response = await fetch(`/api/queue/${itemId}/skip-lacing`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"}
+                })
+                if (!response.ok) await this.fetchQueue()
+            } catch (e) {
+                console.error("Помилка запуску основного часу:", e)
+                await this.fetchQueue()
+            }
+        },
+
+        getSessionPhase(item) {return getSessionPhase(item, this.now)},
+
         // --- LIFECYCLE ---
         async init() {
             this.initInventory()

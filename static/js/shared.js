@@ -123,6 +123,49 @@ function formatSizesSummary(sizes, maxChars = 105) {
     return result
 }
 
+function getSessionPhase(item, nowMs = Date.now()) {
+    if (!item) return null
+
+    if (item.status === "ВИКЛИКАЄТЬСЯ" || item.status === "CALLING") {
+        if (!item.called_at) return null
+        const calledMs = parseServerDate(item.called_at)?.getTime()
+        if (!calledMs) return null
+        const deadline = calledMs + 5 * 60 * 1000
+        const diff = deadline - nowMs
+        return {
+            phase: "CALLING",
+            label: diff > 0 ? "⏳ На явку" : "⚠️ Запізнення",
+            time: formatMs(Math.abs(diff)),
+            overdue: diff <= 0
+        }
+    }
+
+    if ((item.status === "ОБСЛУГОВУЄТЬСЯ" || item.status === "SERVED") && item.session_end) {
+        const endMs = parseServerDate(item.session_end)?.getTime()
+        if (!endMs) return null
+        const durationMs = (item.duration_minutes || 60) * 60 * 1000
+        const lacingEndMs = endMs - durationMs
+
+        if (item.session_start && nowMs < lacingEndMs) {
+            return {
+                phase: "LACING",
+                label: "👟 Перевзування",
+                time: formatMs(lacingEndMs - nowMs),
+                overdue: false
+            }
+        }
+
+        const remaining = endMs - nowMs
+        return {
+            phase: "SKATING",
+            label: remaining > 0 ? "⛸️ На льоду" : "Час вийшов!",
+            time: formatMs(Math.abs(remaining)),
+            overdue: remaining <= 0
+        }
+    }
+
+    return null
+}
 
 // ==========================================
 // 4. ALPINE.JS MIXINS

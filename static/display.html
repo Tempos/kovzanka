@@ -43,9 +43,17 @@
             </h2>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <template :key="item.id" x-for="item in callingItems">
-                    <div class="bg-green-950/80 border-2 border-green-500 rounded-lg p-3 text-center">
+                    <div class="bg-green-950/80 border-2 border-green-500 rounded-lg p-3 text-center"
+                         x-data="{ get phase() { return getSessionPhase(item, now) } }">
                         <span class="text-xl sm:text-2xl font-bold text-green-400 font-mono block leading-tight" x-text="'#' + item.ticket_number"></span>
-                        <div class="text-[11px] text-gray-300 font-mono mt-1" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                        <template x-if="phase">
+                            <div class="text-[11px] font-mono mt-1 font-bold"
+                                 :class="phase.overdue ? 'text-red-400 animate-pulse' : 'text-amber-300'"
+                                 x-text="(phase.overdue ? 'Запізнення: +' : 'Явка: ') + phase.time"></div>
+                        </template>
+                        <template x-if="!phase">
+                            <div class="text-[11px] text-gray-300 font-mono mt-1" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                        </template>
                         <div class="text-[10px] text-gray-300 font-mono break-words mt-0.5" :title="formatSizesSummary(item.shoe_sizes, 500)" x-text="'Розмір(и): ' + formatSizesSummary(item.shoe_sizes)"></div>
                     </div>
                 </template>
@@ -83,26 +91,22 @@
             </h2>
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                 <template :key="item.id" x-for="item in servedItems">
-                    <div class="border rounded-lg p-3 text-center flex flex-col justify-between transition"
-                         :class="isOverdue(item.session_end) ? 'bg-red-950/80 border-red-500 animate-pulse' : 'bg-blue-950/80 border-blue-500/50'">
+                    <div class="border rounded-lg p-3 text-center flex flex-col justify-between transition" x-data="{ get phase() { return getSessionPhase(item, now) } }" :class="isOverdue(item.session_end) ? 'bg-red-950/80 border-red-500 animate-pulse' : (phase?.phase === 'LACING' ? 'bg-teal-950/80 border-teal-500/60' : 'bg-blue-950/80 border-blue-500/50')">
                         <div>
-                            <span class="text-xl sm:text-2xl font-bold font-mono block leading-tight"
-                                  :class="isOverdue(item.session_end) ? 'text-red-300' : 'text-blue-300'"
-                                  x-text="'#' + item.ticket_number"></span>
+                            <span class="text-xl sm:text-2xl font-bold font-mono block leading-tight" x-text="'#' + item.ticket_number" :class="isOverdue(item.session_end) ? 'text-red-300' : (phase?.phase === 'LACING' ? 'text-teal-300' : 'text-blue-300')"></span>
                             <div class="text-[10px] text-gray-300 font-mono break-words mt-0.5" :title="formatSizesSummary(item.shoe_sizes, 500)" x-text="'Розмір(и): ' + formatSizesSummary(item.shoe_sizes)"></div>
                         </div>
-
                         <div class="mt-2 pt-1.5 border-t border-gray-700/60 font-mono">
-                            <template x-if="item.session_end">
+                            <template x-if="phase && phase.phase === 'LACING'">
                                 <div>
-                                    <span class="text-xs font-bold tracking-tight block"
-                                          :class="isOverdue(item.session_end) ? 'text-red-400' : 'text-blue-200'"
-                                          x-text="getRemainingTime(item.session_end)">
-                                    </span>
-                                    <span class="text-[8px] uppercase tracking-tighter block"
-                                          :class="isOverdue(item.session_end) ? 'text-red-400 font-bold' : 'text-gray-400'"
-                                          x-text="isOverdue(item.session_end) ? 'Час вийшов!' : 'залишилось'">
-                                    </span>
+                                    <span class="text-xs font-bold tracking-tight block text-teal-300" x-text="phase.time"></span>
+                                    <span class="text-[8px] uppercase tracking-tighter block text-teal-400">👟 перевзування</span>
+                                </div>
+                            </template>
+                            <template x-if="(!phase || phase.phase !== 'LACING') && item.session_end">
+                                <div>
+                                    <span class="text-xs font-bold tracking-tight block" :class="isOverdue(item.session_end) ? 'text-red-400' : 'text-blue-200'" x-text="getRemainingTime(item.session_end)"></span>
+                                    <span class="text-[8px] uppercase tracking-tighter block" :class="isOverdue(item.session_end) ? 'text-red-400 font-bold' : 'text-gray-400'" x-text="isOverdue(item.session_end) ? 'Час вийшов!' : 'залишилось'"></span>
                                 </div>
                             </template>
                             <template x-if="!item.session_end">
