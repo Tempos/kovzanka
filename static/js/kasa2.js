@@ -281,18 +281,33 @@ function kasa2App() {
             return diffMinutes > 0 ? diffMinutes : 0
         },
 
-        getRemainingTime(sessionEndIso) {
+        async toggleStopTimer(itemId) {
+            try {
+                const response = await fetch(`/api/queue/${itemId}/stop-timer`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"}
+                })
+                if (!response.ok) await this.fetchQueue()
+            } catch (e) {
+                console.error("Помилка зупинки таймера:", e)
+                await this.fetchQueue()
+            }
+        },
+
+        getRemainingTime(sessionEndIso, item = null) {
             const end = parseServerDate(sessionEndIso)
             if (!end) return null
-            const diffMs = end.getTime() - this.now
+            const refNow = getEffectiveNow(item, this.now)
+            const diffMs = end.getTime() - refNow
             if (diffMs <= 0) return null
             return formatMs(diffMs)
         },
 
-        getOverdueTime(sessionEndIso) {
+        getOverdueTime(sessionEndIso, item = null) {
             const end = parseServerDate(sessionEndIso)
             if (!end) return null
-            const diffMs = this.now - end.getTime()
+            const refNow = getEffectiveNow(item, this.now)
+            const diffMs = refNow - end.getTime()
             if (diffMs <= 0) return null
             return formatMs(diffMs)
         },
@@ -300,7 +315,7 @@ function kasa2App() {
         getTimeDisplay(item) {
             const isActive = item.status === "ОБСЛУГОВУЄТЬСЯ" || item.status === "SERVED"
             if (isActive && item.session_end) {
-                const remaining = this.getRemainingTime(item.session_end)
+                const remaining = this.getRemainingTime(item.session_end, item)
                 return remaining ?? "00:00"
             }
             return item.duration_minutes ? item.duration_minutes + " хв" : "—"

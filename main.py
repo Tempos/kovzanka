@@ -8,7 +8,7 @@ from app.inventory import init_inventory_db
 load_dotenv()
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, pages, queue
+from app.api import auth, inventory, pages, queue, status
 from app.db import engine, SessionLocal
 from app.models import Base
 from slowapi import _rate_limit_exceeded_handler
@@ -63,5 +63,5 @@ def custom_swagger_ui(request: Request, kasa1_session: str = Cookie(None), kasa2
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-for item in [auth, pages, queue]:
+for item in [auth, inventory, pages, queue, status]:
     app.include_router(item.router)

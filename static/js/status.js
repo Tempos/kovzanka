@@ -51,10 +51,11 @@ function statusApp() {
         },
 
         // --- TIMERS AND COUNTDOWN ---
-        getRemainingTime(sessionEndIso) {
+        getRemainingTime(sessionEndIso, item = null) {
             const end = typeof parseServerDate === "function" ? parseServerDate(sessionEndIso) : new Date(sessionEndIso)
             if (!end) return null
-            const diffMs = end.getTime() - this.now
+            const refNow = getEffectiveNow(item, this.now)
+            const diffMs = end.getTime() - refNow
             if (diffMs <= 0) {
                 const overdueMs = Math.abs(diffMs)
                 return "+" + formatMs(overdueMs)
@@ -62,10 +63,11 @@ function statusApp() {
             return formatMs(diffMs)
         },
 
-        isOverdue(sessionEndIso) {
+        isOverdue(sessionEndIso, item = null) {
             if (!sessionEndIso) return false
             const end = typeof parseServerDate === "function" ? parseServerDate(sessionEndIso) : new Date(sessionEndIso)
-            return end ? (this.now - end.getTime()) > 0 : false
+            const refNow = getEffectiveNow(item, this.now)
+            return end ? (refNow - end.getTime()) > 0 : false
         },
 
         // --- LIFECYCLE ---

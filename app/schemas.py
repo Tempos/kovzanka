@@ -58,8 +58,10 @@ class QueueItemResponse(BaseModel):
     comment: Optional[str] = None
     status: QueueStatus
 
+    # time
     called_at: Optional[datetime] = None
     duration_minutes: int
+    overtime_stopped_at: Optional[datetime] = None
     session_start: Optional[datetime]
     session_end: Optional[datetime]
 

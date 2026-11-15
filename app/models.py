@@ -47,12 +47,13 @@ class QueueItem(Base):
     comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[QueueStatus] = mapped_column(Enum(QueueStatus), default=QueueStatus.WAITING, index=True)
 
+    # time
     called_at = Column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc))
     duration_minutes: Mapped[int] = mapped_column(Integer, default=60)
+    overtime_stopped_at = Column(DateTime, nullable=True)
     session_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     session_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc))
 
     # telegram bot
     telegram_chat_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)

@@ -123,8 +123,18 @@ function formatSizesSummary(sizes, maxChars = 105) {
     return result
 }
 
+function getEffectiveNow(item, nowMs = Date.now()) {
+    if (item && item.overtime_stopped_at) {
+        const stoppedMs = parseServerDate(item.overtime_stopped_at)?.getTime()
+        if (stoppedMs) return stoppedMs
+    }
+    return nowMs
+}
+
 function getSessionPhase(item, nowMs = Date.now()) {
     if (!item) return null
+    const effectiveNow = getEffectiveNow(item, nowMs)
+    const isFrozen = Boolean(item.overtime_stopped_at)
 
     if (item.status === "ВИКЛИКАЄТЬСЯ" || item.status === "CALLING") {
         if (!item.called_at) return null
@@ -146,24 +156,27 @@ function getSessionPhase(item, nowMs = Date.now()) {
         const durationMs = (item.duration_minutes || 60) * 60 * 1000
         const lacingEndMs = endMs - durationMs
 
-        if (item.session_start && nowMs < lacingEndMs) {
+        if (item.session_start && effectiveNow < lacingEndMs) {
             return {
                 phase: "LACING",
-                label: "👟 Перевзування",
-                time: formatMs(lacingEndMs - nowMs),
-                overdue: false
+                label: isFrozen ? "⏸️ Перевзування (пауза)" : "👟 Перевзування",
+                time: formatMs(lacingEndMs - effectiveNow),
+                overdue: false,
+                frozen: isFrozen
             }
         }
 
-        const remaining = endMs - nowMs
+        const remaining = endMs - effectiveNow
         return {
             phase: "SKATING",
-            label: remaining > 0 ? "⛸️ На льоду" : "Час вийшов!",
+            label: isFrozen
+                ? (remaining > 0 ? "⏸️ Зупинено" : "⏸️ Overtime зафіксовано")
+                : (remaining > 0 ? "⛸️ На льоду" : "Час вийшов!"),
             time: formatMs(Math.abs(remaining)),
-            overdue: remaining <= 0
+            overdue: remaining <= 0,
+            frozen: isFrozen
         }
     }
-
     return null
 }
 
