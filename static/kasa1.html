@@ -36,7 +36,7 @@
     <form @submit.prevent="submitForm" class="space-y-6">
         <div> <!-- Телефон -->
             <label class="field-label">Номер телефону</label>
-            <input @input="formatPhone" class="text-input font-mono text-xl font-medium tracking-wide" placeholder="+380 63 111 11 11" required type="tel" x-model="formattedPhone">
+            <input @input="formatPhoneInput" class="text-input font-mono text-xl font-medium tracking-wide" placeholder="+380 63 111 11 11" required type="tel" x-model="formattedPhone">
             <p class="text-xs text-slate-400 mt-1">Просто вводьте цифри номера (наприклад, 0631111111)</p>
         </div>
 

@@ -14,12 +14,7 @@ function kasa1() {
         availableDurations: [30, 45, 60, 90, 120],
         comment: "",
         createdTicket: null,
-        inventory: {},
-        inventoryRequestId: 0,
         inventoryError: false,
-        showInventoryModal: false,
-        queue: [],
-        wsConnected: false,
         activeTab: 'figure',
 
         // --- COMPUTED PROPERTIES ---
@@ -38,28 +33,6 @@ function kasa1() {
         },
 
         // --- INVENTORY MANAGEMENT ---
-        async fetchInventory() {
-            const requestId = ++this.inventoryRequestId
-            try {
-                const res = await fetch("/api/inventory")
-                if (res.ok) {
-                    const rawData = await res.json()
-                    if (requestId === this.inventoryRequestId) {
-                        const sortedKeys = Object.keys(rawData).sort((a, b) =>
-                            a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
-                        )
-                        const sortedInventory = {}
-                        sortedKeys.forEach(key => {sortedInventory[key] = rawData[key]})
-                        this.inventory = sortedInventory
-                        this.inventoryError = false
-                    }
-                } else if (requestId === this.inventoryRequestId) {this.inventoryError = true}
-            } catch (e) {
-                console.error("Помилка оновлення залишків ковзанів:", e)
-                if (requestId === this.inventoryRequestId) {this.inventoryError = true}
-            }
-        },
-
         async retryInventory() {
             this.inventoryError = false
             await this.fetchInventory()
@@ -79,7 +52,7 @@ function kasa1() {
         clearSizes() {this.shoeSizes = []},
 
         // --- PHONE MASKS ---
-        formatPhone() {
+        formatPhoneInput() {
             const digits = this.extractDigits(this.formattedPhone)
             this.rawDigits = digits
             this.formattedPhone = this.buildPhoneMask(digits)

@@ -1,17 +1,19 @@
 function inventory(config = {}) {
     return {
+        ...inventoryMixin(),
+        ...wsSyncMixin(),
+
         // --- STATE AND VARIABLES ---
-        inventory: {},
         isAdmin: config.isAdmin || false,
         wsConnected: false,
-        now: Math.floor(Date.now() / 1000),
         newSize: "",
+        expandRange: false,
         newCategory: "figure",
         newTotal: 1,
         sortColumn: "size",
         sortAsc: true,
 
-        get wsStatus() {return getWsStatus(this.wsConnected)},
+        get wsStatus() { return getWsStatus(this.wsConnected) },
 
         // --- COMPUTED PROPERTIES ---
         get sortedInventory() {
@@ -49,33 +51,27 @@ function inventory(config = {}) {
         },
 
         // --- API ACTIONS ---
-        async fetchInventory() {
-            try {
-                const res = await fetch("/api/inventory")
-                if (res.ok) {this.inventory = await res.json()}
-            } catch (e) {console.error("Помилка завантаження залишків:", e)}
-        },
-
         async addSize() {
             if (!this.newSize.trim()) return
 
             const raw = this.newSize.trim()
-            let formattedSize = raw
-            if (!raw.includes("(")) {formattedSize = this.newCategory === "hockey" ? `${raw} (хокейні)` : `${raw} (фігурні)`}
 
             try {
                 const res = await fetch("/api/inventory", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({
-                        size: formattedSize,
+                        size: raw,
+                        category: this.newCategory,
                         total_stock: Number(this.newTotal),
-                        maintenance_count: 0
+                        maintenance_count: 0,
+                        expand_range: Boolean(this.expandRange)
                     })
                 })
                 if (res.ok) {
                     this.newSize = ""
                     this.newCategory = "figure"
+                    this.expandRange = false
                     this.newTotal = 1
                     await this.fetchInventory()
                 } else {
@@ -117,40 +113,10 @@ function inventory(config = {}) {
             } catch (e) {console.error("Помилка видалення:", e)}
         },
 
-        parseSizeNum(key) {
-            const match = String(key).match(/^(\d+)/)
-            return match ? match[1] : key
-        },
-        parseSizeCat(key) {
-            const lower = String(key).toLowerCase()
-            if (lower.includes("хок") || lower.includes("hok")) return "(хок.)"
-            if (lower.includes("фіг")) return "(фіг.)"
-            const match = String(key).match(/\((.*?)\)/)
-            return match ? `(${match[1]})` : ""
-        },
-
-        formatCountdown(targetTimestamp, currentTime) {
-            if (!targetTimestamp) return "—"
-            const diff = targetTimestamp - currentTime
-            if (diff <= 0) return "0 с"
-
-            const mins = Math.floor(diff / 60)
-            const secs = diff % 60
-            return mins > 0 ? `${mins} хв ${String(secs).padStart(2, "0")} с` : `${secs} с`
-        },
-
         // --- LIFECYCLE ---
         async init() {
-            await this.fetchInventory()
-
-            createQueueWebSocket({
-                onOpen: () => {this.wsConnected = true},
-                onMessage: () => {void this.fetchInventory()},
-                onClose: () => {this.wsConnected = false}
-            })
-
-            setInterval(() => {this.now = Math.floor(Date.now() / 1000)}, 1000)
-            setInterval(() => {if (!document.hidden) {void this.fetchInventory()}}, 5000)
+            this.initInventory()
+            this.initWebSocket()
         }
     }
 }

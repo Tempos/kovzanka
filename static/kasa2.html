@@ -141,7 +141,10 @@
                                     </button>
                                 </template>
                                 <template x-if="item.status === 'ВИКЛИКАЄТЬСЯ'">
-                                    <button @click="changeStatus(item.id, 'ОБСЛУГОВУЄТЬСЯ')" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition">Видати ковзани</button>
+                                    <button @click="changeStatus(item.id, 'ОБСЛУГОВУЄТЬСЯ')" :disabled="isTicketBlocked(item)" :title="isTicketBlocked(item) ? 'Недостатньо вільних розмірів у наявності' : 'Видати ковзани'"
+                                            class="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition">
+                                        Видати ковзани
+                                    </button>
                                 </template>
                                 <template x-if="item.status === 'ОБСЛУГОВУЄТЬСЯ'">
                                     <div class="inline-flex gap-1">
