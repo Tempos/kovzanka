@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from app.models import QueueStatus
 
@@ -18,13 +18,15 @@ class CancelTicketRequest(BaseModel):
 
 
 class ExtendSessionRequest(BaseModel):
-    minutes: int = 15  # За замовчуванням +15 хвилин
+    minutes: int = 15
 
 
 class InventoryItemCreate(BaseModel):
     size: str = Field(..., max_length=64)
+    category: str = Field("figure", max_length=32)
     total_stock: int = Field(..., ge=0)
     maintenance_count: int = Field(0, ge=0)
+    expand_range: bool = Field(False, validation_alias=AliasChoices("expand_range", "expandRange"))
 
 
 class InventoryItemUpdate(BaseModel):
@@ -57,7 +59,6 @@ class QueueItemResponse(BaseModel):
     comment: Optional[str] = None
     status: QueueStatus
 
-    # time
     called_at: Optional[datetime] = None
     duration_minutes: int
     overtime_stopped_at: Optional[datetime] = None

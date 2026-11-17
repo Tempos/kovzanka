@@ -63,8 +63,8 @@ function createQueueWebSocket({onMessage, onOpen, onClose}) {
 
 // 3. SIZES AND TIME HELPERS
 function parseSizeNum(key) {
-    const match = String(key).match(/^(\d+)/)
-    return match ? match[1] : key
+    const parts = String(key).split("(")
+    return parts[0].trim()
 }
 
 function parseSizeCat(key) {
@@ -83,9 +83,10 @@ function formatMs(diffMs) {
 }
 
 function formatSizeKey(key) {
-    const match = String(key).match(/^(\d+)\s*\((.*?)\)$/)
-    if (!match) return key
-    const [_, num, cat] = match
+    const parts = String(key).split("(")
+    if (parts.length < 2) return key
+    const num = parts[0].trim()
+    const cat = parts[1].replace(")", "").trim()
     const shortCat = cat.startsWith("фіг") ? "фіг." : (cat.startsWith("хок") ? "хок." : cat)
     return `${num} (${shortCat})`
 }
@@ -127,7 +128,10 @@ function getEffectiveNow(item, nowMs = Date.now()) {
 
 function getSessionPhase(item, nowMs = Date.now()) {
     if (!item) return null
-    const effectiveNow = getEffectiveNow(item, nowMs)
+
+    // Гарантуємо, що поточний час завжди в мілісекундах
+    const safeNowMs = nowMs < 10000000000 ? nowMs * 1000 : nowMs
+    const effectiveNow = getEffectiveNow(item, safeNowMs)
     const isFrozen = Boolean(item.overtime_stopped_at)
 
     if (item.status === "ВИКЛИКАЄТЬСЯ" || item.status === "CALLING") {
@@ -135,7 +139,7 @@ function getSessionPhase(item, nowMs = Date.now()) {
         const calledMs = parseServerDate(item.called_at)?.getTime()
         if (!calledMs) return null
         const deadline = calledMs + 5 * 60 * 1000
-        const diff = deadline - nowMs
+        const diff = deadline - safeNowMs
         return {
             phase: "CALLING",
             label: diff > 0 ? "⏳ На явку" : "⚠️ Запізнення",
@@ -208,24 +212,38 @@ function inventoryMixin() {
     return {
         inventory: {},
         showInventoryModal: false,
-        inventoryNow: Math.floor(Date.now() / 1000),
+        now: Date.now(),
 
         initInventory() {
             void this.fetchInventory()
-            setInterval(() => { this.inventoryNow = Math.floor(Date.now() / 1000) }, 1000)
+            setInterval(() => { this.now = Date.now() }, 1000)
             setInterval(() => { if (!document.hidden) { void this.fetchInventory() } }, 5000)
         },
 
         async fetchInventory() {
             try {
                 const res = await fetch("/api/inventory")
-                if (res.ok) { this.inventory = await res.json() }
+                if (res.ok) {
+                    const rawData = await res.json()
+                    const sortedKeys = Object.keys(rawData).sort((a, b) =>
+                        a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'})
+                    )
+                    const sortedInventory = {}
+                    sortedKeys.forEach(key => { sortedInventory[key] = rawData[key] })
+                    this.inventory = sortedInventory
+                }
             } catch (e) { console.error("Помилка завантаження залишків:", e) }
         },
 
-        formatCountdown(targetTimestamp) {
-            if (!targetTimestamp) return "—"
-            const diff = targetTimestamp - this.inventoryNow
+        formatCountdown(targetTimestamp, currentTime) {
+            const nowTime = currentTime !== undefined ? currentTime : this.now
+            const target = Number(targetTimestamp)
+            if (!target || Number.isNaN(target)) return "—"
+
+            const currentSec = nowTime > 10000000000 ? Math.floor(nowTime / 1000) : nowTime
+            const targetSec = target > 10000000000 ? Math.floor(target / 1000) : target
+
+            const diff = targetSec - currentSec
             if (diff <= 0) return "0 с"
 
             const mins = Math.floor(diff / 60)

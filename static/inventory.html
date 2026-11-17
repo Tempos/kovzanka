@@ -43,23 +43,22 @@
         </div>
 
         <!-- Add New Size Form (Admin Only) -->
-        <div x-show="isAdmin" class="bg-white shadow rounded-lg p-4 mb-6" style="display: none;">
-            <h3 class="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wider">➕ Додати новий розмір</h3>
-            <div class="flex flex-col sm:flex-row gap-3">
-                <input type="text" x-model="newSize" placeholder="Розмір (напр. 42)" class="px-3 py-2 border rounded text-sm flex-1">
+        <div class="flex flex-col sm:flex-row gap-3 items-center">
+            <!-- Поле приймає лише числа або діапазон через дефіс -->
+            <input type="text" x-model="newSize" placeholder="Розмір (напр. 38 або діапазон 20-25)" class="px-3 py-2 border rounded text-sm flex-1">
 
-                <!-- Category Selector Dropdown -->
-                <select x-model="newCategory" class="px-3 py-2 border rounded text-sm bg-white text-gray-700">
-                    <option value="figure">⛸️ Фігурні</option>
-                    <option value="hockey">🏒 Хокейні</option>
-                </select>
+            <!-- Чекбокс для масштабування/розгортання діапазону -->
+            <label class="inline-flex items-center text-xs text-gray-700 cursor-pointer select-none" title="Якщо увімкнено, діапазон на кшталт 20-25 створить окремі розміри для кожного числа">
+                <input type="checkbox" x-model="expandRange" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 mr-1.5">Діапазон
+            </label>
 
-                <input type="number" x-model.number="newTotal" placeholder="Всього штук" min="1"
-                       class="px-3 py-2 border rounded text-sm w-full sm:w-28">
-                <button @click="addSize()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded text-sm font-bold transition">
-                    Додати в базу
-                </button>
-            </div>
+            <!-- Category Selector -->
+            <select x-model="newCategory" class="px-3 py-2 border rounded text-sm bg-white text-gray-700">
+                <option value="figure">⛸️ Фігурні</option><option value="hockey">🏒 Хокейні</option>
+            </select>
+
+            <input type="number" x-model.number="newTotal" placeholder="Всього штук" min="1" class="px-3 py-2 border rounded text-sm w-full sm:w-28">
+            <button @click="addSize()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded text-sm font-bold transition">Додати в базу</button>
         </div>
 
         <!-- Inventory Table Component -->

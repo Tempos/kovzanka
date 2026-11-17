@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import KASA2_PIN, verify_kasa1, verify_kasa2
 from app.bot import send_telegram_notification
 from app.db import DBSession, get_db
+from app.inventory import revert_unfulfillable_calling_tickets
 from app.models import QueueItem, QueueStatus
 from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, MassExtendRequest, \
     QueueItemResponse, UpdateTicketRequest
@@ -226,6 +227,10 @@ async def update_status(item_id: int, status: QueueStatus, db: DBSession):
         item.session_end = now + timedelta(minutes=5 + item.duration_minutes)
 
     db.commit()
+
+    if status == QueueStatus.SERVED:
+        revert_unfulfillable_calling_tickets(db)
+
     db.refresh(item)
 
     if is_calling and was_not_calling and item.telegram_chat_id:
@@ -239,6 +244,7 @@ async def update_status(item_id: int, status: QueueStatus, db: DBSession):
             print(f"[ERROR] Failed to send Telegram notification: {e}")
 
     await manager.broadcast("QUEUE_UPDATED")
+    await manager.broadcast("INVENTORY_UPDATED")
     return item
 
 
