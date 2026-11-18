@@ -9,6 +9,25 @@
     <script src="/static/js/shared.js"></script>
     <script src="/static/js/kasa2.js"></script>
     <link rel="stylesheet" href="/static/css/akulamama.css">
+    <style>
+        /* Одна спільна пульсація на всю сторінку: усі позначені квитки читають одне й те саме значення,
+           тому завжди синхронні, незалежно від того, коли їх позначили. */
+        @property --issue-pulse {
+            syntax: "<number>";
+            inherits: true;
+            initial-value: 0;
+        }
+        :root { animation: issue-pulse 3s ease-in-out infinite; }
+        @keyframes issue-pulse {
+            0%, 100% { --issue-pulse: 0; }
+            50% { --issue-pulse: 1; }
+        }
+        .issue-row-warning > td { background-color: rgb(245 158 11 / calc(var(--issue-pulse) * .2)); }
+        .issue-row-danger > td { background-color: rgb(220 38 38 / calc(var(--issue-pulse) * .28)); }
+        @media (prefers-reduced-motion: reduce) {
+            :root { animation: none; --issue-pulse: .6; }
+        }
+    </style>
     <script defer src="/static/js/akulamama.js"></script>
 </head>
 <body class="ak-site ak-kasa2 bg-gray-100 min-h-screen p-8" x-data="kasa2App()">
@@ -23,10 +42,26 @@
         <!-- Шапка -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 text-center sm:text-left w-full sm:w-auto">Каса №2: Видача ковзанів</h1>
-
             <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
-                <input type="text" x-model="searchQuery" placeholder="Пошук (#, тел, розмір, коментар...)"
-                       class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-56 sm:w-72">
+                <div class="relative">
+                    <!-- Search -->
+                    <input type="text" x-model="searchQuery" placeholder="Пошук" title="Пошук: №, телефон, розмір, коментар. Швидкі фільтри: ! — жовті, !! — червоні, !!! — усі позначені"
+                           class="pl-3 pr-24 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-56 sm:w-72">
+
+                    <!-- Лічильники всередині поля пошуку: не займають місця в шапці, клік — фільтр -->
+                    <div x-show="problemTicketsCount > 0" x-cloak class="absolute inset-y-0 right-1.5 flex items-center gap-1" :title="'Замовлень з позначками: ' + problemTicketsCount">
+                        <button type="button" x-show="warningTicketsCount > 0" @click="toggleIssueFilter('!')" title="Показати лише жовті (клік ще раз — скинути)"
+                                :class="issueFilter === 'warning' ? 'ring-2 ring-inset ring-amber-500' : ''"
+                                class="px-1.5 py-0.5 rounded text-xs font-bold leading-4 bg-amber-100 text-amber-800 hover:bg-amber-200 transition">
+                            🟡<span x-text="warningTicketsCount"></span>
+                        </button>
+                        <button type="button" x-show="dangerTicketsCount > 0" @click="toggleIssueFilter('!!')" title="Показати лише червоні (клік ще раз — скинути)"
+                                :class="issueFilter === 'danger' ? 'ring-2 ring-inset ring-red-500' : ''"
+                                class="px-1.5 py-0.5 rounded text-xs font-bold leading-4 bg-red-100 text-red-700 hover:bg-red-200 transition">
+                            🔴<span x-text="dangerTicketsCount"></span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="flex items-center space-x-4 w-full sm:w-auto justify-between sm:justify-end">
@@ -36,7 +71,7 @@
 
                 <!-- Кнопка масового додавання часу / технічної перерви -->
                 <button class="inline-flex items-center px-3 py-1.5 border border-amber-300 text-sm font-medium rounded-md text-amber-800 bg-amber-50 hover:bg-amber-100 shadow-sm transition"
-                        @click="techBreakModal.open = true; techBreakModal.password = ''; techBreakModal.error = ''; $nextTick(() => $refs.adminPasswordInput.focus())">⏱️ Технічна перерва (+10 хв)
+                        @click="techBreakModal.open = true; techBreakModal.password = ''; techBreakModal.error = ''; $nextTick(() => $refs.adminPasswordInput.focus())" title="Технічна перерва: +10 хв до всіх активних квитків">⏱️ +10 хв
                 </button>
 
                 <!-- WebSocket Status Badge with Mouseover Tooltip -->
@@ -48,7 +83,6 @@
         </div>
 
         <!-- Таблиця черги -->
-        <!-- Main Queue Card Container (Wraps BOTH tables together) -->
         <div class="bg-white rounded-lg shadow overflow-x-auto">
 
             <!-- 1. Top Active Queue Table -->
@@ -65,16 +99,32 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                 <template :key="item.id" x-for="item in activeQueue">
-                    <tr class="hover:bg-gray-50 transition-colors" :class="isTicketBlocked(item) ? 'animate-pulse bg-red-100/10' : ''">
-                        <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-base sm:text-lg font-bold text-gray-900" x-text="'#' + item.ticket_number"></td>
+                    <tr class="transition-colors"
+                        :class="{
+                            'issue-row-warning': item.issue_status === 'warning',
+                            'issue-row-danger': item.issue_status === 'danger',
+                            'hover:bg-gray-50': !item.issue_status,
+                            'bg-red-50/20': isTicketBlocked(item) && !item.issue_status
+                        }">
+                        <!-- Комірка з номером замовлення -->
+                        <td class="px-4 py-3 font-bold text-lg"><span x-text="'#' + item.ticket_number"></span></td>
+
                         <td class="px-3 sm:px-4 py-3 align-middle">
                             <div class="font-mono font-bold text-slate-900 leading-tight whitespace-nowrap text-xs sm:text-sm" x-text="formatPhone(item.phone)"></div>
                             <template x-if="item.comment">
-                                <div :title="item.comment" class="mt-1 text-xs text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 max-w-[160px] truncate cursor-help leading-tight">
+                                <div :title="item.comment" class="mt-1 text-xs text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 max-w-[160px] truncate cursor-help leading-tight">
                                     💬 <span x-text="item.comment"></span>
                                 </div>
                             </template>
+
+                            <!-- Відображення опису проблеми, якщо вона є -->
+                            <template x-if="item.issue_note">
+                                <div :title="item.issue_note" class="mt-1 text-xs text-rose-900 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-200 max-w-[180px] truncate cursor-help font-semibold">
+                                    ⚠️ <span x-text="item.issue_note"></span>
+                                </div>
+                            </template>
                         </td>
+
                         <td class="px-2 py-3 min-w-[150px] sm:min-w-[180px]">
                             <div class="flex flex-wrap gap-1">
                                 <template x-for="(size, idx) in item.shoe_sizes" :key="idx">
@@ -84,13 +134,14 @@
                                 </template>
                             </div>
                         </td>
+
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-mono font-bold">
                             <div class="flex flex-col gap-1" x-data="{ get phase() { return getSessionPhase(item) } }">
                                 <!-- Phase 1: Calling (5 min arrival window) -->
                                 <template x-if="phase && phase.phase === 'CALLING'">
                                     <div class="flex flex-col">
-                                        <span :class="phase.overdue ? 'text-red-600 animate-pulse' : 'text-amber-600'" x-text="phase.label + ': ' + (phase.overdue ? '+' : '') + phase.time"></span>
-                                        <span class="text-[11px] text-gray-400" x-text="'Сеанс: ' + item.duration_minutes + ' хв'"></span>
+                                        <span :class="phase.overdue ? 'text-red-600 animate-pulse' : 'text-amber-700'" x-text="phase.label + ': ' + (phase.overdue ? '+' : '') + phase.time"></span>
+                                        <span class="text-[11px] text-gray-500" x-text="'Сеанс: ' + item.duration_minutes + ' хв'"></span>
                                     </div>
                                 </template>
 
@@ -108,13 +159,13 @@
                                 <!-- Phase 3: On Ice (or default fallback) -->
                                 <template x-if="!phase || phase.phase === 'SKATING'">
                                     <div class="flex flex-col">
-                                        <span :class="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && item.session_end ? 'text-blue-700' : 'text-gray-600'" x-text="getTimeDisplay(item)"></span>
+                                        <span :class="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && item.session_end ? 'text-blue-700' : 'text-gray-700'" x-text="getTimeDisplay(item)"></span>
                                         <template x-if="item.session_end">
                                             <span class="text-xs text-blue-600" x-text="'до ' + formatTime(item.session_end)"></span>
                                         </template>
                                         <template x-if="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && getOverdueTime(item.session_end, item, now)">
                                             <span :title="item.overtime_stopped_at ? 'Overtime зупинено на ' + getOverdueTime(item.session_end, item, now) : 'Протерміновано на ' + getOverdueTime(item.session_end, item, now)"
-                                                  :class="item.overtime_stopped_at ? 'bg-slate-900 text-white border-slate-700' : 'bg-red-100 text-red-800 border-red-200 animate-pulse'"
+                                                  :class="item.overtime_stopped_at ? 'bg-slate-800 text-white border-slate-700' : 'bg-rose-100 text-rose-900 border-rose-200'"
                                                   class="mt-1 inline-flex items-center w-max px-2.5 py-0.5 rounded-full text-xs font-bold border cursor-help shadow-sm">
                                                 <span x-text="item.overtime_stopped_at ? '⏸️ +' : '⏱️ +'"></span><span x-text="getOverdueTime(item.session_end, item, now)"></span>
                                             </span>
@@ -123,20 +174,22 @@
                                 </template>
                             </div>
                         </td>
+
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
                             <span :class="{
-                                  'bg-yellow-100 text-yellow-800': item.status === 'ЧЕКАЄ',
-                                  'bg-green-100 text-green-800': item.status === 'ВИКЛИКАЄТЬСЯ',
-                                  'bg-blue-100 text-blue-800': item.status === 'ОБСЛУГОВУЄТЬСЯ'
+                                  'bg-yellow-100 text-yellow-900': item.status === 'ЧЕКАЄ',
+                                  'bg-emerald-100 text-emerald-900': item.status === 'ВИКЛИКАЄТЬСЯ',
+                                  'bg-blue-100 text-blue-900': item.status === 'ОБСЛУГОВУЄТЬСЯ'
                               }"
-                              class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full" x-text="item.status">
+                                  class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full" x-text="item.status">
                             </span>
                         </td>
+
                         <td class="px-3 sm:px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="inline-flex items-center justify-end gap-1.5 flex-wrap">
                                 <template x-if="item.status === 'ЧЕКАЄ'">
                                     <button @click="changeStatus(item.id, 'ВИКЛИКАЄТЬСЯ')" :disabled="isTicketBlocked(item)" :title="isTicketBlocked(item) ? 'Недостатньо вільних розмірів у наявності' : 'Викликати клієнта'"
-                                            class="px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition bg-green-600 hover:bg-green-700 text-white disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed">
+                                            class="px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed">
                                         Викликати
                                     </button>
                                 </template>
@@ -158,17 +211,30 @@
                                 <template x-if="item.status !== 'ЧЕКАЄ'">
                                     <button @click="revertStatus(item.id)" class="bg-gray-600 hover:bg-gray-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition" title="Відкотити попередню дію">↩️</button>
                                 </template>
+                                <!-- Швидка позначка: клік — поставити, повторний клік — зняти -->
+                                <div class="inline-flex rounded overflow-hidden border border-slate-300" role="group" aria-label="Позначка проблеми">
+                                    <button type="button" @click="toggleIssue(item, 'warning')"
+                                            :title="item.issue_status === 'warning' ? 'Зняти позначку «Увага»' : 'Позначити: потребує уваги'"
+                                            :aria-pressed="item.issue_status === 'warning'"
+                                            :class="item.issue_status === 'warning' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-amber-100'"
+                                            class="px-2 py-1 text-xs transition">🟡
+                                    </button>
+                                    <button type="button" @click="toggleIssue(item, 'danger')"
+                                            :title="item.issue_status === 'danger' ? 'Зняти позначку «Проблема»' : 'Позначити: проблемне замовлення'"
+                                            :aria-pressed="item.issue_status === 'danger'"
+                                            :class="item.issue_status === 'danger' ? 'bg-red-600 text-white' : 'bg-white text-slate-500 hover:bg-red-100'"
+                                            class="px-2 py-1 text-xs border-l border-slate-300 transition">🔴
+                                    </button>
+                                </div>
                                 <button @click="openCancelModal(item)" class="bg-gray-200 hover:bg-red-600 hover:text-white text-gray-700 px-2 py-1 rounded text-xs transition" title="Скасувати">✕</button>
-                                <button @click="openEditModal(item)" class="bg-blue-800 hover:bg-blue-900 text-white px-2 py-1 rounded text-xs transition" title="Редагувати розміри / час">✏️</button>
+                                <button @click="openEditModal(item)" class="bg-blue-800 hover:bg-blue-900 text-white px-2 py-1 rounded text-xs transition" title="Редагувати розміри / час / проблеми">✏️</button>
                             </div>
                         </td>
                     </tr>
                 </template>
                 </tbody>
             </table>
-            <template x-if="activeQueue.length === 0">
-                <div class="text-center py-8 text-gray-500">Активних квитків у черзі немає</div>
-            </template>
+            <template x-if="activeQueue.length === 0"><div class="text-center py-8 text-gray-500">Активних квитків у черзі немає</div></template>
 
             <!-- 2. Bottom Recently Closed Table (Shared inside the exact same scroll container) -->
             <template x-if="closedQueue.length > 0">
@@ -178,14 +244,11 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                         <template :key="item.id" x-for="item in closedQueue">
                             <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-base sm:text-lg font-bold text-gray-900"
-                                    x-text="'#' + item.ticket_number"></td>
+                                <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-base sm:text-lg font-bold text-gray-900" x-text="'#' + item.ticket_number"></td>
                                 <td class="px-3 sm:px-4 py-3 align-middle">
-                                    <div class="font-mono font-bold text-slate-900 leading-tight whitespace-nowrap text-xs sm:text-sm"
-                                         x-text="formatPhone(item.phone)"></div>
+                                    <div class="font-mono font-bold text-slate-900 leading-tight whitespace-nowrap text-xs sm:text-sm" x-text="formatPhone(item.phone)"></div>
                                     <template x-if="item.comment">
-                                        <div :title="item.comment"
-                                             class="mt-1 text-xs text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 max-w-[160px] truncate cursor-help leading-tight">
+                                        <div :title="item.comment" class="mt-1 text-xs text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 max-w-[160px] truncate cursor-help leading-tight">
                                             💬 <span x-text="item.comment"></span>
                                         </div>
                                     </template>
@@ -203,12 +266,9 @@
                                     <span x-text="item.duration_minutes ? item.duration_minutes + ' хв' : '—'"></span>
                                 </td>
                                 <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                <span :class="{
-                                          'bg-purple-100 text-purple-800': item.status === 'ПОВЕРНЕНО',
-                                          'bg-red-100 text-red-800': item.status === 'СКАСОВАНО'
-                                      }"
-                                      class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full" x-text="item.status">
-                                </span>
+                                    <span :class="{ 'bg-purple-100 text-purple-800': item.status === 'ПОВЕРНЕНО', 'bg-red-100 text-red-800': item.status === 'СКАСОВАНО' }"
+                                          class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full" x-text="item.status">
+                                    </span>
                                 </td>
                                 <td class="px-3 sm:px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <button @click="revertStatus(item.id)" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-xs font-bold transition inline-flex items-center gap-1">
@@ -225,174 +285,16 @@
     </div>
 
     <!-- Inventory Modal Popup -->
-    {% include "inventory_modal.html" %}
+    {% include "templates/inventory_modal.html" %}
 
     <!-- МОДАЛЬНЕ ВІКНО РЕДАГУВАННЯ КВИТКА -->
-    <div x-show="editModal.open" x-cloak class="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto" @click.away="editModal.open = false">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-slate-800">
-                    ✏️ Редагування талону <span class="text-blue-600" x-text="'#' + editModal.ticketNumber"></span>
-                </h3>
-                <button type="button" @click="editModal.open = false" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">×</button>
-            </div>
-
-            <!-- Tabs Navigation -->
-            <div class="flex bg-slate-100 p-1 rounded-xl mb-3 border border-slate-200">
-                <button type="button" @click="editModal.activeTab = 'figure'"
-                        :class="editModal.activeTab === 'figure' ? 'bg-white text-blue-600 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'"
-                        class="flex-1 py-2 text-center text-sm transition rounded-lg">
-                    ⛸️ Фігурні
-                </button>
-                <button type="button" @click="editModal.activeTab = 'hockey'"
-                        :class="editModal.activeTab === 'hockey' ? 'bg-white text-blue-600 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'"
-                        class="flex-1 py-2 text-center text-sm transition rounded-lg">
-                    🏒 Хокейні
-                </button>
-            </div>
-
-            <div class="flex justify-between items-center mb-2">
-                <div class="text-[11px] text-slate-400 font-mono">💡 ЛКМ: додати пару • ПКМ: видалити пару</div>
-                <button @click="clearEditSizes()" class="text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded transition"
-                        type="button" x-show="editModal.sizes.length > 0">
-                    ✕ Очистити вибір
-                </button>
-            </div>
-
-            <!-- Сітка кнопок розмірів -->
-            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200 mb-4">
-                <template x-for="(data, size) in filteredEditInventory" :key="size">
-                    <button type="button"
-                            @click="addEditSize(size)"
-                            @contextmenu.prevent="removeEditSize(size)"
-                            :class="getEditSizeCount(size) > 0 ? 'size-btn-active'
-                            : (getEffectiveAvailable(size) > 0 ? 'size-btn-idle' : 'bg-red-50 text-red-900 border-red-200/60 hover:bg-red-100/50')"
-                            class="size-btn relative flex flex-col items-center justify-center rounded-xl border text-center transition select-none cursor-pointer min-w-0 py-2">
-
-                        <!-- Номер розміру -->
-                        <span class="text-base sm:text-lg font-black tracking-tight font-mono" x-text="parseSizeNum(size)"></span>
-                        <!-- Категорія -->
-                        <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-tighter"
-                              :class="getEditSizeCount(size) > 0 ? 'text-blue-100' : 'text-slate-500'"
-                              x-text="parseSizeCat(size)"></span>
-
-                        <!-- Живий індикатор залишку -->
-                        <span class="text-[9px] sm:text-[10px] font-bold mt-0.5 tracking-tighter whitespace-nowrap"
-                              :class="getEditSizeCount(size) > 0 ? 'text-blue-100' : (getEffectiveAvailable(size) > 0 ? 'text-slate-400' : 'text-red-500 font-extrabold')"
-                              x-text="Math.max(0, getEffectiveAvailable(size) - getEditSizeCount(size)) + '/' + data.total">
-                        </span>
-
-                        <!-- Помаранчевий круглий лічильник кількості обраних пар -->
-                        <span class="absolute -top-2 -right-2 bg-blue-600 text-slate-950 text-xs font-black w-5 h-5 rounded-full flex items-center justify-center border border-white"
-                              x-show="getEditSizeCount(size) > 0" x-text="getEditSizeCount(size)"></span>
-
-                        <!-- Індикатор часу повернення -->
-                        <template x-if="getEffectiveAvailable(size) === 0 && data.next_available_in_mins !== null">
-                            <span class="absolute -bottom-1.5 bg-yellow-500 text-gray-950 font-mono text-[9px] font-black px-1 rounded shadow animate-pulse"
-                                  x-text="'~' + data.next_available_in_mins + 'хв'">
-                            </span>
-                        </template>
-                    </button>
-                </template>
-            </div>
-
-            <!-- Тривалість сеансу -->
-            <div class="mb-5">
-                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Тривалість сеансу (хв)</label>
-                <div class="flex gap-2">
-                    <template x-for="d in editModal.availableDurations" :key="d">
-                        <button type="button" @click="editModal.duration = d" class="flex-1 py-2 px-2 rounded-lg border text-sm transition text-center" x-text="d + ' хв'"
-                                :class="editModal.duration === d ? 'bg-blue-600 text-white font-semibold shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
-                        </button>
-                    </template>
-                </div>
-            </div>
-
-            <!-- Редагування коментаря -->
-            <div class="mb-5">
-                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Коментар / Нотатка</label>
-                <input type="text" x-model.trim="editModal.comment" placeholder="Введіть нотатку або залиште порожнім..."
-                       class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-            </div>
-
-            <!-- Кнопки збереження -->
-            <div class="flex justify-end gap-3">
-                <button type="button" @click="editModal.open = false" class="bg-gray-200 hover:bg-gray-300 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700">
-                    Відміна
-                </button>
-                <button type="button" @click="submitEdit()" :disabled="editModal.sizes.length === 0" class="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition">
-                    Зберегти зміни (<span x-text="editModal.sizes.length"></span> чол.,<span x-text="editModal.duration"></span> хв)
-                </button>
-            </div>
-        </div>
-    </div>
+    {% include "templates/edit_ticket_modal.html" %}
 
     <!-- МОДАЛЬНЕ ВІКНО СКАСУВАННЯ З ОБОВ'ЯЗКОВИМ КОМЕНТАРЕМ -->
-    <div x-show="cancelModal.open" x-cloak class="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border-t-4 border-red-500" @click.away="cancelModal.open = false">
-            <h3 class="text-xl font-bold text-red-600 mb-1">Скасування талону
-                <span x-text="'#' + cancelModal.ticketNumber"></span></h3>
-            <p class="text-xs text-gray-500 mb-4">Будь ласка, вкажіть причину скасування для подальшої статистики.</p>
+    {% include "templates/cancel_ticket_modal.html" %}
 
-            <!-- Швидкі теги причин -->
-            <div class="flex flex-wrap gap-1.5 mb-3">
-                <template x-for="preset in ['Не підійшов розмір', 'Відмова клієнта', 'Помилка касира', 'Клієнт не з’явився']">
-                    <button type="button"
-                            @click="cancelModal.reason = preset"
-                            class="text-xs px-2.5 py-1 rounded-lg border border-gray-300 hover:bg-gray-100 text-gray-700 transition"
-                            x-text="preset"></button>
-                </template>
-            </div>
-
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Причина скасування *</label>
-                <textarea x-model.trim="cancelModal.reason"
-                          rows="3"
-                          placeholder="Опишіть причину детальніше..."
-                          class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"></textarea>
-                <p x-show="cancelModal.error" x-text="cancelModal.error" class="text-red-500 text-xs mt-1 font-medium"></p>
-            </div>
-
-            <div class="flex justify-end gap-3">
-                <button type="button" @click="cancelModal.open = false" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-xl text-sm font-medium text-gray-700">Назад</button>
-                <button type="button"
-                        @click="submitCancel()"
-                        :disabled="!cancelModal.reason || cancelModal.reason.length < 3"
-                        class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition">
-                    Підтвердити скасування
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- МОДАЛЬНЕ ВІКНО ТЕХНІЧНОЇ ПЕРЕРИВИ / МАСОВОГО ДОДАВАННЯ ЧАСУ -->
-    <div x-show="techBreakModal.open" x-cloak class="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border-t-4 border-amber-500" @click.away="techBreakModal.open = false">
-            <h3 class="text-xl font-bold text-amber-800 mb-1">⚠️ Технічна перерва</h3>
-            <p class="text-xs text-gray-500 mb-4">Ця дія додасть +10 хвилин до часу всіх активних квитків на льоду. Введіть пароль адміністратора для підтвердження.</p>
-
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Пароль адміністратора *</label>
-                <input type="password"
-                       x-model="techBreakModal.password"
-                       x-ref="adminPasswordInput"
-                       @keyup.enter="submitTechBreak()"
-                       placeholder="Введіть пароль..."
-                       class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
-                <p x-show="techBreakModal.error" x-text="techBreakModal.error" class="text-red-500 text-xs mt-1 font-medium"></p>
-            </div>
-
-            <div class="flex justify-end gap-3">
-                <button type="button" @click="techBreakModal.open = false" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-xl text-sm font-medium text-gray-700">Скасувати</button>
-                <button type="button"
-                        @click="submitTechBreak()"
-                        :disabled="!techBreakModal.password"
-                        class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition">
-                    Підтвердити (+10 хв)
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- МОДАЛЬНЕ ВІКНО ТЕХНІЧНОЇ ПЕРЕРВИ / МАСОВОГО ДОДАВАННЯ ЧАСУ -->
+    {% include "templates/tech_break_modal.html" %}
 </main>
 <footer class="ak-footer">
     <span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/staff">Вхід для працівників ↗</a>

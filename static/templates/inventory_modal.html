@@ -1,9 +1,6 @@
 <!-- Inventory Modal Popup -->
-<div x-show="showInventoryModal"
-     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4"
-     style="display: none;"
-     @click.self="showInventoryModal = false"
-     @keydown.escape.window="showInventoryModal = false">
+<div x-show="showInventoryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4"
+     style="display: none;" @click.self="showInventoryModal = false" @keydown.escape.window="showInventoryModal = false">
 
     <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-4 sm:p-6 overflow-hidden">
         <div class="flex justify-between items-center mb-3 sm:mb-4 pb-2 border-b border-gray-200">
@@ -24,6 +21,7 @@
                     <th class="py-2 px-3 sm:py-3 sm:px-4 text-right">Орієнтовний час</th>
                 </tr>
                 </thead>
+
                 <tbody class="divide-y divide-gray-250 bg-white">
                 <template x-for="(data, size) in inventory" :key="size">
                     <tr class="hover:bg-gray-50 transition">
@@ -40,11 +38,8 @@
                 </tbody>
             </table>
         </div>
-
         <div class="mt-4 sm:mt-6 flex justify-end">
-            <button @click="showInventoryModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg text-sm transition">
-                Закрити
-            </button>
+            <button @click="showInventoryModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg text-sm transition">Закрити</button>
         </div>
     </div>
 </div>

@@ -11,11 +11,14 @@ from app.bot import send_telegram_notification
 from app.db import DBSession, get_db
 from app.inventory import revert_unfulfillable_calling_tickets
 from app.models import QueueItem, QueueStatus, User
-from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, MassExtendRequest, \
+from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, IssueStatusRequest, \
+    MassExtendRequest, \
     QueueItemResponse, UpdateTicketRequest
 from app.ws_manager import manager
 
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
+
+ALLOWED_ISSUE_STATUSES = {"warning", "danger"}
 
 
 @router.websocket("/ws/queue")
@@ -57,11 +60,6 @@ async def update_ticket_details(item_id: int, payload: UpdateTicketRequest, db: 
     if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
         raise HTTPException(status_code=404, detail="Запис не знайдено")
 
-    allowed_statuses = [QueueStatus.WAITING, QueueStatus.CALLING, QueueStatus.SERVED, "ЧЕКАЄ", "ВИКЛИКАЄТЬСЯ",
-                        "ОБСЛУГОВУЄТЬСЯ"]
-    if item.status not in allowed_statuses:
-        raise HTTPException(status_code=400, detail="Неможливо редагувати квиток у поточному статусі")
-
     if payload.duration_minutes is not None:
         old_duration = item.duration_minutes
         item.duration_minutes = payload.duration_minutes
@@ -76,6 +74,19 @@ async def update_ticket_details(item_id: int, payload: UpdateTicketRequest, db: 
 
     if payload.comment is not None:
         item.comment = payload.comment.strip() or None
+
+    # model_fields_set відрізняє "поле не передали" від явного null (= зняти позначку)
+    if "issue_status" in payload.model_fields_set:
+        new_status = (payload.issue_status or "").strip() or None
+        if new_status is not None and new_status not in ALLOWED_ISSUE_STATUSES:
+            raise HTTPException(status_code=422, detail="Невірний статус проблеми")
+        item.issue_status = new_status
+
+    if "issue_note" in payload.model_fields_set:
+        item.issue_note = (payload.issue_note or "").strip() or None
+
+    if not item.issue_status:
+        item.issue_note = None  # Якщо позначку знято — прибираємо і нотатку
 
     db.commit()
     db.refresh(item)
@@ -181,6 +192,25 @@ async def extend_session(item_id: int, payload: ExtendSessionRequest, db: Sessio
     await manager.broadcast("QUEUE_UPDATED")
     return item
 
+
+@router.patch("/queue/{item_id}/issue", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
+async def update_ticket_issue_status(item_id: int, payload: IssueStatusRequest, db: Session = Depends(get_db)):
+    if not (item := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
+        raise HTTPException(status_code=404, detail="Запис не знайдено")
+
+    if payload.issue_status is not None and payload.issue_status not in ALLOWED_ISSUE_STATUSES:
+        raise HTTPException(status_code=422, detail="Невірний статус проблеми")
+
+    item.issue_status = payload.issue_status
+    if not item.issue_status:
+        item.issue_note = None  # Позначку знято — нотатка більше не потрібна
+    elif "issue_note" in payload.model_fields_set:
+        item.issue_note = (payload.issue_note or "").strip() or None
+
+    db.commit()
+    db.refresh(item)
+    await manager.broadcast("QUEUE_UPDATED")
+    return item
 
 @router.post("/queue/{item_id}/revert", dependencies=[Depends(verify_kasa2)])
 async def revert_ticket_status(item_id: int, db: Session = Depends(get_db)):

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
+from sqlalchemy import inspect, text
 
 from app.api import auth, inventory, pages, queue, status
 from app.api.auth import get_password_hash
@@ -23,6 +24,20 @@ from fastapi.responses import RedirectResponse
 import os
 
 
+def ensure_columns():
+    inspector = inspect(engine)
+    columns = [col["name"] for col in inspector.get_columns("queue")]
+
+    with engine.begin() as conn:
+        if "issue_status" not in columns:
+            conn.execute(text("ALTER TABLE queue ADD COLUMN issue_status VARCHAR(64) DEFAULT NULL;"))
+            print("[DB MIGRATION] Додано колонку issue_status до таблиці queue.")
+
+        if "issue_note" not in columns:
+            conn.execute(text("ALTER TABLE queue ADD COLUMN issue_note TEXT DEFAULT NULL;"))
+            print("[DB MIGRATION] Додано колонку issue_note до таблиці queue.")
+
+
 def init_default_users(db: SessionLocal):
     default_users = [
         {"username": "admin", "role": "admin", "password": os.getenv("ADMIN_PIN", "0000")},
@@ -33,7 +48,7 @@ def init_default_users(db: SessionLocal):
         existing = db.query(User).filter(User.username == user_data["username"]).first()
         if not existing:
             hashed_password = get_password_hash(user_data["password"])
-            new_user = User(username=user_data["username"],password_hash=hashed_password,role=user_data["role"])
+            new_user = User(username=user_data["username"], password_hash=hashed_password, role=user_data["role"])
             db.add(new_user)
     db.commit()
 
@@ -41,6 +56,7 @@ def init_default_users(db: SessionLocal):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_columns()
 
     db = SessionLocal()
     try:
