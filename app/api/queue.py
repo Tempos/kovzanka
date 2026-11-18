@@ -86,44 +86,55 @@ async def update_ticket_details(item_id: int, payload: UpdateTicketRequest, db: 
 @router.post("/queue", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa1)])
 async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
     # 1. Look up existing Telegram chat ID based on phone number
-    norm_phone = "".join(filter(str.isdigit, req.phone))
-    norm_phone_key = norm_phone[-9:] if len(norm_phone) >= 9 else norm_phone
-
     existing_chat_id = None
-    if norm_phone_key:
-        linked_items = db.query(QueueItem).filter(QueueItem.telegram_chat_id.isnot(None)).all()
-        for r in linked_items:
-            r_norm = "".join(filter(str.isdigit, r.phone))
-            r_norm_key = r_norm[-9:] if len(r_norm) >= 9 else r_norm
-            if r_norm_key == norm_phone_key:
-                existing_chat_id = r.telegram_chat_id
-                break
+    if req.phone:
+        norm_phone = "".join(filter(str.isdigit, req.phone))
+        norm_phone_key = norm_phone[-9:] if len(norm_phone) >= 9 else norm_phone
 
-    # 2. Retry loop for atomic ticket number allocation under concurrency
-    for _ in range(5):
-        last_ticket = db.query(QueueItem).order_by(QueueItem.id.desc()).first()
-        next_number = (last_ticket.ticket_number + 1) if last_ticket else 101
+        if norm_phone_key:
+            linked_items = db.query(QueueItem).filter(QueueItem.telegram_chat_id.isnot(None)).all()
+            for r in linked_items:
+                if r.phone:
+                    r_norm = "".join(filter(str.isdigit, r.phone))
+                    r_norm_key = r_norm[-9:] if len(r_norm) >= 9 else r_norm
+                    if r_norm_key == norm_phone_key:
+                        existing_chat_id = r.telegram_chat_id
+                        break
 
-        item = QueueItem(
-            ticket_number=next_number,
-            phone=req.phone,
-            people_count=len(req.shoe_sizes),
-            shoe_sizes=req.shoe_sizes,
-            duration_minutes=req.duration_minutes,
-            comment=req.comment,
-            telegram_chat_id=existing_chat_id,
-        )
+    # 2. Визначаємо наступний номер на основі максимального існуючого в БД (або стартуємо з 101)
+    # Це безпечніше і швидше, ніж ручний цикл із частими IntegrityError
+    last_ticket = db.query(QueueItem).order_by(QueueItem.ticket_number.desc()).first()
+    next_number = (last_ticket.ticket_number + 1) if (last_ticket and last_ticket.ticket_number >= 101) else 101
+
+    item = QueueItem(
+        ticket_number=next_number,
+        phone=req.phone,
+        people_count=len(req.shoe_sizes),
+        shoe_sizes=req.shoe_sizes,
+        duration_minutes=req.duration_minutes,
+        comment=req.comment,
+        telegram_chat_id=existing_chat_id,
+    )
+    db.add(item)
+
+    try:
+        db.commit()
+        db.refresh(item)
+        await manager.broadcast("QUEUE_UPDATED")
+        return item
+    except IntegrityError as e:
+        db.rollback()
+        # Якщо сталася гонка (двоє касирів клікнули в мілісекунду), беремо абсолютний максимум + 1 повторною спробою
+        db.expire_all()
+        last_ticket = db.query(QueueItem).order_by(QueueItem.ticket_number.desc()).first()
+        next_number = (last_ticket.ticket_number + 1) if (last_ticket and last_ticket.ticket_number >= 101) else 101
+
+        item.ticket_number = next_number
         db.add(item)
-        try:
-            db.commit()
-            db.refresh(item)
-            await manager.broadcast("QUEUE_UPDATED")
-            return item
-        except IntegrityError:
-            db.rollback()
-            continue
-
-    raise HTTPException(status_code=500, detail="Could not allocate unique ticket number due to high concurrency.")
+        db.commit()
+        db.refresh(item)
+        await manager.broadcast("QUEUE_UPDATED")
+        return item
 
 
 @router.post("/queue/{item_id}/cancel", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])

@@ -7,7 +7,7 @@ from app.models import QueueStatus
 
 
 class CreateQueueRequest(BaseModel):
-    phone: str
+    phone: Optional[str] = None
     shoe_sizes: List[str]
     duration_minutes: int = 60
     comment: Optional[str] = None
@@ -58,7 +58,7 @@ class QueueItemResponse(BaseModel):
     id: int
     ticket_number: int
     tracking_token: str
-    phone: str
+    phone: Optional[str] = None
     people_count: int
     shoe_sizes: List[str]
     comment: Optional[str] = None

@@ -59,7 +59,7 @@ class QueueItem(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     ticket_number: Mapped[int] = mapped_column(Integer, index=True, nullable=False, unique=True)
     tracking_token: Mapped[str] = mapped_column(String(64), unique=True, default=lambda: str(uuid.uuid4())[:8])
-    phone: Mapped[str] = mapped_column(Text)
+    phone: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     people_count: Mapped[int] = mapped_column(Integer)
     shoe_sizes: Mapped[list] = mapped_column(JSON)
     comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
