@@ -125,3 +125,15 @@ body.fullscreen-mode .fullscreen-grid-container .grid > div > div:last-child {wh
 @media(prefers-reduced-motion:reduce){.ak-site *, .ak-site *:before,.ak-site *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(max-width:600px){.ak-home .ak-hero h1{font-size:46px!important;line-height:1.12}.ak-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;gap:4px}.ak-nav a{text-align:center;padding:9px 4px}.ak-kasa1 .ak-page .flex.justify-between{flex-wrap:wrap;gap:8px}}
 @media(max-width:600px){.ak-kasa1 .grid-cols-6{grid-template-columns:repeat(4,minmax(0,1fr))!important}.ak-kasa1 .size-btn span{white-space:nowrap}.ak-kasa1 .size-btn{min-height:66px}.ak-kasa1 .card form>.mb-4>.flex{flex-wrap:wrap}.ak-kasa1 .card form>.mb-4 button{flex:1 0 28%;min-height:40px}}
+/* Кастомний скролбар для темної теми табло */
+::-webkit-scrollbar {width: 6px;height: 6px;}
+::-webkit-scrollbar-track {background: rgba(31, 41, 55, 0.5); /* bg-gray-800 з прозорістю */border-radius: 4px;}
+::-webkit-scrollbar-thumb {background: rgba(75, 85, 99, 0.8); /* bg-gray-600 */border-radius: 4px;}
+::-webkit-scrollbar-thumb:hover {background: rgba(107, 114, 128, 1); /* bg-gray-500 */}
+/* Динамічне розширення та пропорції табло у повноекранному та звичайному режимах */
+.ak-display .ak-header,
+.ak-display .ak-page,
+.ak-display .ak-footer {max-width: 100% !important;}
+body.fullscreen-mode .top-sections-wrapper {flex: 2 !important; /* ~66% висоти */min-height: 0 !important;}
+body.fullscreen-mode .bottom-section-wrapper {flex: 1 !important; /* ~33% висоти */min-height: 0 !important;}
+body.fullscreen-mode .display-container {height: calc(100vh - 75px) !important;}
