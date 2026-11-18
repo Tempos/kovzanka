@@ -25,7 +25,6 @@ function displayApp() {
         // --- LIFECYCLE ---
         init() {
             this.fetchQueue()
-            setInterval(() => {this.fetchQueue()}, 3000)
             setInterval(() => {this.now = Date.now()}, 1000)
             this.initWebSocket()
 

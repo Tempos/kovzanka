@@ -105,7 +105,7 @@
                             </template>
                             <template x-if="(!phase || phase.phase !== 'LACING') && item.session_end">
                                 <div>
-                                    <span class="text-xs font-bold tracking-tight block" :class="isOverdue(item.session_end) ? 'text-red-400' : 'text-blue-200'" x-text="getRemainingTime(item.session_end)"></span>
+                                    <span class="text-xs font-bold tracking-tight block" :class="isOverdue(item.session_end) ? 'text-red-400' : 'text-blue-200'" x-text="getRemainingTime(item.session_end, now)"></span>
                                     <span class="text-[8px] uppercase tracking-tighter block" :class="isOverdue(item.session_end) ? 'text-red-400 font-bold' : 'text-gray-400'" x-text="isOverdue(item.session_end) ? 'Час вийшов!' : 'залишилось'"></span>
                                 </div>
                             </template>

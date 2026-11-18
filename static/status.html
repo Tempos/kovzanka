@@ -133,7 +133,7 @@
                             </template>
                             <template x-if="(!phase || phase.phase !== 'LACING') && data.session_end">
                                 <div>
-                                    <span class="text-3xl font-bold tracking-tight block" :class="isOverdue(data.session_end) ? 'text-red-400' : 'text-blue-200'" x-text="getRemainingTime(data.session_end)"></span>
+                                    <span class="text-3xl font-bold tracking-tight block" :class="isOverdue(data.session_end) ? 'text-red-400' : 'text-blue-200'" x-text="getRemainingTime(data.session_end, now)"></span>
                                     <span class="text-xs uppercase tracking-wider block mt-0.5 font-bold" :class="isOverdue(data.session_end) ? 'text-red-400' : 'text-gray-400'" x-text="isOverdue(data.session_end) ? 'Час вийшов!' : 'залишилось на льоду'"></span>
                                 </div>
                             </template>

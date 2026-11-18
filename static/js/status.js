@@ -7,7 +7,6 @@ function statusApp() {
         ticketNumber: "",
         inputTicket: "",
         apiData: {},
-        pollInterval: null,
         now: Date.now(),
 
         // --- COMPUTED PROPERTIES ---
@@ -35,10 +34,7 @@ function statusApp() {
             window.location.search = `?ticket=${num}`
         },
 
-        resetTicket() {
-            if (this.pollInterval) clearInterval(this.pollInterval)
-            window.location.href = window.location.pathname
-        },
+        resetTicket() {window.location.href = window.location.pathname},
 
         async fetchTicketStatus() {
             if (!this.ticketNumber) return
@@ -57,7 +53,6 @@ function statusApp() {
             if (!this.ticketNumber) return
 
             this.fetchTicketStatus()
-            this.pollInterval = setInterval(() => { this.fetchTicketStatus() }, 5000)
             setInterval(() => { this.now = Date.now() }, 1000)
 
             this.initWebSocket()
