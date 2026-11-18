@@ -6,10 +6,11 @@ function displayApp() {
         // --- STATE AND VARIABLES ---
         isFullscreen: false,
         now: Date.now(),
+        hideOnIce: false,
 
         // --- COMPUTED PROPERTIES ---
         get callingItems() {return this.queue.filter(item => item.status === "ВИКЛИКАЄТЬСЯ")},
-        get waitingItems() {return this.queue.filter(item => item.status === "ЧЕКАЄ").slice(0, 12)},
+        get waitingItems() {return this.queue.filter(item => item.status === "ЧЕКАЄ")},
         get servedItems() {return this.queue.filter(item => item.status === "ОБСЛУГОВУЄТЬСЯ")},
         get wsStatus() {return getWsStatus(this.wsConnected)},
 

@@ -1,30 +1,33 @@
 document.addEventListener("alpine:init", () => {
     Alpine.data("loginForm", () => ({
-        // --- STATE ---
-        pin: "",
+        password: "",
         errorMessage: "",
 
-        // --- ACTIONS ---
         async submitLogin() {
             this.errorMessage = ""
             const urlParams = new URLSearchParams(window.location.search)
-            const roleParam = urlParams.get("role")
-            const nextParam = urlParams.get("next") || "/"
+            const nextUrl = urlParams.get("next") || ""
+            const roleParam = urlParams.get("role") || null
 
             try {
-                const res = await fetch("/api/login", {
+                const response = await fetch("/api/login", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({pin: this.pin, role: roleParam})
+                    body: JSON.stringify({password: this.password, role: roleParam})
                 })
 
-                if (res.ok) {window.location.href = nextParam}
-                else {
-                    const errData = await res.json()
-                    this.errorMessage = errData.detail || "Невірний ПІН-код"
-                    this.pin = ""
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}))
+                    throw new Error(errData.detail || "Невірний пароль")
                 }
-            } catch (e) {this.errorMessage = "Помилка мережі. Спробуйте пізніше."}
+
+                const data = await response.json()
+
+                if (nextUrl) {window.location.href = nextUrl
+                } else if (data.role === "admin") {window.location.href = "/admin"
+                } else if (data.role === "kasa1") {window.location.href = "/kasa1"
+                } else {window.location.href = "/kasa2"}
+            } catch (error) {this.errorMessage = error.message || "Помилка авторизації"}
         }
     }))
 })

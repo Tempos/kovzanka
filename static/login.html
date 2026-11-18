@@ -43,20 +43,18 @@
     <form @submit.prevent="submitLogin()" class="space-y-6">
         <div class="space-y-2">
             <div class="flex justify-between items-center px-1">
-                <label for="worker-pin" class="text-xs font-bold text-gray-400 uppercase tracking-widest font-mono">
-                    Введіть ПІН-код
+                <label for="worker-password" class="text-xs font-bold text-gray-400 uppercase tracking-widest font-mono">
+                    Введіть пароль / ПІН-код
                 </label>
             </div>
 
             <div class="relative">
-                <input id="worker-pin" name="pin" aria-label="ПІН-код працівника" type="password"
-                       inputmode="numeric"
-                       pattern="[0-9]*"
-                       maxlength="6"
-                       x-model="pin"
+                <input id="worker-password" name="password" aria-label="Пароль працівника" type="password"
+                       inputmode="text"
+                       x-model="password"
                        placeholder="••••"
                        autofocus
-                       class="w-full text-center tracking-[1em] text-3xl font-black bg-gray-950/90 border border-gray-700 rounded-xl p-4 text-yellow-300 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 placeholder-gray-800 font-mono transition-all duration-200 shadow-inner">
+                       class="w-full text-center tracking-[0.5em] text-3xl font-black bg-gray-950/90 border border-gray-700 rounded-xl p-4 text-yellow-300 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 placeholder-gray-800 font-mono transition-all duration-200 shadow-inner">
             </div>
         </div>
 
@@ -72,7 +70,7 @@
 
         <!-- Execution Action Trigger Button -->
         <button type="submit"
-                :disabled="!pin"
+                :disabled="!password"
                 class="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-600 text-gray-950 font-black uppercase tracking-widest text-sm p-4 rounded-xl transition-all duration-150 shadow-lg cursor-pointer disabled:cursor-not-allowed select-none active:scale-[0.99] border-t border-yellow-300/20 disabled:border-none">
             Підтвердити вхід
         </button>

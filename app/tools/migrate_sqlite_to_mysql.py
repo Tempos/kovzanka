@@ -6,11 +6,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def migrate_data():
-    if not os.path.exists("ice_rink.db"):
+    if not os.path.exists("../../ice_rink.db"):
         print("No local SQLite database found. Skipping migration.")
         return
 
-    sqlite_conn = sqlite3.connect("ice_rink.db")
+    sqlite_conn = sqlite3.connect("../../ice_rink.db")
     sqlite_cursor = sqlite_conn.cursor()
 
     mysql_conn = pymysql.connect(

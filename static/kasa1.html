@@ -35,9 +35,15 @@
     </h1>
     <form @submit.prevent="submitForm" class="space-y-6">
         <div> <!-- Телефон -->
-            <label class="field-label">Номер телефону</label>
-            <input @input="formatPhoneInput" class="text-input font-mono text-xl font-medium tracking-wide" placeholder="+380 63 111 11 11" required type="tel" x-model="formattedPhone">
-            <p class="text-xs text-slate-400 mt-1">Просто вводьте цифри номера (наприклад, 0631111111)</p>
+            <div class="flex justify-between items-center mb-1">
+                <label class="field-label mb-0">Номер телефону</label>
+                <label class="flex items-center space-x-2 cursor-pointer text-sm font-medium text-slate-600">
+                    <input type="checkbox" x-model="skipPhone" @change="toggleSkipPhone" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+                    <span>Без номера</span>
+                </label>
+            </div>
+            <input @input="formatPhoneInput" :disabled="skipPhone" :class="skipPhone ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''" class="text-input font-mono text-xl font-medium tracking-wide" placeholder="+380 63 111 11 11" type="tel" x-model="formattedPhone">
+            <p class="text-xs text-slate-400 mt-1" x-text="skipPhone ? 'Реєстрація без мобільного сповіщення' : 'Просто вводьте цифри номера (наприклад, 0631111111)'"></p>
         </div>
 
         <div> <!-- Вибір розмірів -->

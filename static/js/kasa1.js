@@ -7,7 +7,8 @@ function kasa1() {
         ...wsSyncMixin(),
 
         // --- STATE AND VARIABLES ---
-        formattedPhone: "+380 ",
+        skipPhone: localStorage.getItem('kasa1_skipPhone') === 'true',
+        formattedPhone: localStorage.getItem('kasa1_skipPhone') === 'true' ? "" : "+380 ",
         rawDigits: "",
         shoeSizes: [],
         durationMinutes: 60,
@@ -18,14 +19,16 @@ function kasa1() {
         activeTab: 'figure',
 
         // --- COMPUTED PROPERTIES ---
-        get canSubmit() {return this.shoeSizes.length > 0 && this.rawDigits.length >= LOCAL_PHONE_DIGITS},
+        get canSubmit() {
+            const hasPhoneOrSkipped = this.skipPhone || this.rawDigits.length >= LOCAL_PHONE_DIGITS;
+            return this.shoeSizes.length > 0 && hasPhoneOrSkipped;
+        },
 
         get filteredInventory() {
             const filtered = {}
             for (const [size, data] of Object.entries(this.inventory)) {
                 const lower = String(size).toLowerCase()
                 const isHockey = lower.includes('хок') || lower.includes('hok')
-
                 if (this.activeTab === 'hockey' && isHockey) {filtered[size] = data}
                 else if (this.activeTab === 'figure' && !isHockey) {filtered[size] = data}
             }
@@ -68,12 +71,15 @@ function kasa1() {
             const parts = [digits.substring(0, 2), digits.substring(2, 5), digits.substring(5, 7), digits.substring(7, 9)].filter(Boolean)
             return "+380 " + parts.join(" ")
         },
-
-        statusLink(ticket) { return "/status?ticket=" + ticket.ticket_number },
+        toggleSkipPhone() {
+            localStorage.setItem('kasa1_skipPhone', this.skipPhone);
+            if (this.skipPhone) {this.formattedPhone = ""; this.rawDigits = ""} else {this.formattedPhone = "+380 "}
+        },
 
         // --- FORM SUBMISSION ---
         resetForm() {
-            this.formattedPhone = "+380 "
+            // Не скидаємо skipPhone тут, щоб він залишався увімкненим/вимкненим за вибором касира
+            this.formattedPhone = this.skipPhone ? "" : "+380 "
             this.rawDigits = ""
             this.shoeSizes = []
             this.durationMinutes = 60
@@ -82,10 +88,8 @@ function kasa1() {
 
         async submitForm() {
             if (!this.canSubmit) return
-
-            const fullPhone = "+380" + this.rawDigits
-            const displayPhone = this.formattedPhone
-
+            const fullPhone = this.skipPhone ? null : ("+380" + this.rawDigits)
+            const displayPhone = this.skipPhone ? "Без телефону" : this.formattedPhone
             try {
                 const response = await fetch("/api/queue", {
                     method: "POST",
@@ -102,7 +106,6 @@ function kasa1() {
                     console.error("Помилка сервера:", response.status, errorBody)
                     return
                 }
-
                 this.createdTicket = await response.json()
                 this.createdTicket.phone = displayPhone
                 this.resetForm()

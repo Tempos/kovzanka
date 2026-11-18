@@ -7,7 +7,7 @@ from app.models import QueueStatus
 
 
 class CreateQueueRequest(BaseModel):
-    phone: str
+    phone: Optional[str] = None
     shoe_sizes: List[str]
     duration_minutes: int = 60
     comment: Optional[str] = None
@@ -45,15 +45,20 @@ class LoginRequest(BaseModel):
 
 
 class MassExtendRequest(BaseModel):
-    minutes: int
-    admin_password: str
+    admin_password: Optional[str] = None
+    password: Optional[str] = None  # Підтримуємо обидва варіанти на випадок різного фронтенду
+    minutes: int = 10
+
+    @property
+    def effective_password(self) -> str:
+        return self.admin_password or self.password or ""
 
 
 class QueueItemResponse(BaseModel):
     id: int
     ticket_number: int
     tracking_token: str
-    phone: str
+    phone: Optional[str] = None
     people_count: int
     shoe_sizes: List[str]
     comment: Optional[str] = None

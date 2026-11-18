@@ -10,20 +10,49 @@
     <script src="/static/js/display.js"></script>
     <link rel="stylesheet" href="/static/css/akulamama.css">
     <script defer src="/static/js/akulamama.js"></script>
-</head>
-<body class="ak-site ak-display min-h-screen p-6 font-sans" x-data="displayApp()">
-<header class="ak-header">
-    <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
-    <nav class="ak-nav" aria-label="Головна навігація"><a href="/">Головна</a><a href="/inventory">Залишки</a><a href="/display">Табло</a><a href="/status">Мій талон</a></nav>
-</header>
-<main class="ak-page">
-<div class="w-full h-full flex flex-col flex-1">
-    <header class="flex flex-row justify-between items-center pb-2 border-b border-gray-800 mb-2 shrink-0">
-        <h1 class="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-wider text-blue-400 text-center flex-1">Електронна Черга</h1>
+    <style>
+        /* Базові налаштування екрана */
+        html, body.ak-display { height: 100vh !important; max-height: 100vh !important; overflow: hidden !important; margin: 0; padding: 0; }
+        body.ak-display { display: flex !important; flex-direction: column !important; box-sizing: border-box; }
+        body.ak-display .ak-header { flex-shrink: 0; }
+        body.ak-display .ak-footer { flex-shrink: 0; padding-top: 6px !important; padding-bottom: 6px !important; margin-top: 2px !important; }
+        body.ak-display .ak-page { flex: 1 !important; display: flex !important; flex-direction: column !important; min-height: 0 !important; max-width: 100% !important; padding: 10px 24px !important; box-sizing: border-box; }
 
-        <div class="flex items-center space-x-3">
+        /* Контейнер табло */
+        .display-container { flex: 1 !important; display: flex !important; flex-direction: column !important; min-height: 0 !important; gap: 8px !important; }
+
+        /* Звичайний режим: верхні блоки займають меншу частину (на 5 рядків), нижній — більшу */
+        .top-sections-wrapper { flex: 1.6 !important; min-height: 0 !important; }
+        .bottom-section-wrapper { flex: 1 !important; min-height: 0 !important; }
+
+        /* Повноекранний режим: приховуємо шапку/підвал і розширюємо верхній блок на 7 рядків */
+        body.fullscreen-mode .ak-header,
+        body.fullscreen-mode .ak-footer { display: none !important; }
+        body.fullscreen-mode .ak-page { height: 100vh !important; padding: 8px !important; }
+        body.fullscreen-mode .top-sections-wrapper { flex: 2.91 !important; }
+        body.fullscreen-mode .bottom-section-wrapper { flex: 1 !important; }
+    </style>
+</head>
+<body class="ak-site ak-display font-sans" x-data="displayApp()">
+<header class="ak-header !max-w-none w-full">
+    <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
+    <h1 class="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-wider text-blue-400 text-center flex-1">Електронна Черга</h1>
+    <nav class="ak-nav" aria-label="Головна навігація">
+        <a href="/">Головна</a><a href="/inventory">Залишки</a><a href="/display">Табло</a><a href="/status">Мій талон</a>
+    </nav>
+</header>
+
+<main class="ak-page !max-w-none w-full">
+    <div class="w-full h-full flex flex-col flex-1 min-h-0">
+        <!-- Панель кнопок праворуч (між шапкою та блоками черги) -->
+        <div class="flex items-center justify-end space-x-3 mb-1.5 shrink-0">
+            <!-- Toggle Hide In Ice Button -->
+            <button @click="hideOnIce = !hideOnIce" class="bg-transparent hover:bg-white/10 text-gray-300 hover:text-white px-2.5 py-1.5 rounded-lg border border-gray-700/60 text-xs font-mono transition flex items-center space-x-1.5" :title="hideOnIce ? 'Показати блок На льоду' : 'Сховати блок На льоду'">
+                <span x-text="hideOnIce ? '🧊 Показати льод' : '🧊 Сховати льод'"></span>
+            </button>
+
             <!-- Fullscreen Toggle Button -->
-            <button @click="toggleFullScreen()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white p-2 rounded-lg border border-gray-700 text-sm font-mono transition flex items-center justify-center" :title="isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'">
+            <button @click="toggleFullScreen()" class="bg-transparent hover:bg-white/10 text-gray-300 hover:text-white p-2 rounded-lg border border-gray-700/60 text-sm font-mono transition flex items-center justify-center" :title="isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'">
                 <span class="text-base leading-none" x-text="isFullscreen ? '🗗' : '🗖'"></span>
             </button>
 
@@ -33,96 +62,98 @@
                 <span class="text-xs font-mono text-gray-400 leading-none" :class="wsStatus.text ? 'ml-2' : ''" x-text="wsStatus.text"></span>
             </div>
         </div>
-    </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
-        <!-- INVITATIONS  -->
-        <div class="bg-gray-800/80 rounded-2xl p-4 border border-green-500/30 shadow-xl flex flex-col">
-            <h2 class="text-base sm:text-lg font-bold text-green-400 mb-3 flex items-center uppercase tracking-wide">
-                <span class="inline-block w-2.5 h-2.5 bg-green-500 rounded-full mr-2 animate-ping"></span>Запрошуються
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <template :key="item.id" x-for="item in callingItems">
-                    <div class="bg-green-950/80 border-2 border-green-500 rounded-lg p-3 text-center"
-                         x-data="{ get phase() { return getSessionPhase(item, now) } }">
-                        <span class="text-xl sm:text-2xl font-bold text-green-400 font-mono block leading-tight" x-text="'#' + item.ticket_number"></span>
-                        <template x-if="phase">
-                            <div class="text-[11px] font-mono mt-1 font-bold"
-                                 :class="phase.overdue ? 'text-red-400 animate-pulse' : 'text-amber-300'"
-                                 x-text="(phase.overdue ? 'Запізнення: +' : 'Явка: ') + phase.time"></div>
+        <div class="display-container">
+            <!-- TOP BLOCKS CONTAINER -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 top-sections-wrapper min-h-0">
+                <!-- INVITATIONS -->
+                <div class="bg-gray-800/80 rounded-2xl p-3.5 border border-green-500/30 shadow-xl flex flex-col min-h-0 h-full md:col-span-1">
+                    <h2 class="text-sm sm:text-base font-bold text-green-400 mb-2 flex items-center uppercase tracking-wide shrink-0">
+                        <span class="inline-block w-2.5 h-2.5 bg-green-500 rounded-full mr-2 animate-ping"></span>Запрошуються
+                    </h2>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 overflow-y-auto pr-1 flex-1 min-h-0 content-start">
+                        <template :key="item.id" x-for="item in callingItems">
+                            <div class="bg-green-950/80 border-2 border-green-500 rounded-lg p-1.5 text-center flex flex-col justify-center gap-0.5 h-[95px] shrink-0"
+                                 x-data="{ get phase() { return getSessionPhase(item, now) } }">
+                                <span class="text-xl sm:text-2xl font-extrabold text-green-300 font-mono block leading-none tracking-tight" x-text="'#' + item.ticket_number"></span>
+                                <template x-if="phase">
+                                    <div class="text-[11px] sm:text-xs font-mono font-bold leading-tight truncate"
+                                         :class="phase.overdue ? 'text-red-400 animate-pulse' : 'text-amber-300'"
+                                         x-text="(phase.overdue ? 'Запізнення: +' : 'Явка: ') + phase.time"></div>
+                                </template>
+                                <template x-if="!phase">
+                                    <div class="text-[11px] sm:text-xs text-gray-300 font-mono font-semibold leading-tight truncate" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                                </template>
+                                <div class="text-[10px] sm:text-[11px] text-gray-100 font-mono font-semibold leading-tight line-clamp-2 break-words" :title="formatSizesSummary(item.shoe_sizes, 500)" x-text="formatSizesSummary(item.shoe_sizes)"></div>
+                            </div>
                         </template>
-                        <template x-if="!phase">
-                            <div class="text-[11px] text-gray-300 font-mono mt-1" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                    </div>
+                    <template x-if="callingItems.length === 0">
+                        <div class="text-center py-6 text-gray-500 font-medium text-sm m-auto">Немає активних викликів</div>
+                    </template>
+                </div>
+
+                <!-- QUEUED -->
+                <div class="bg-gray-800/80 rounded-2xl p-3.5 border border-gray-700 shadow-xl flex flex-col min-h-0 h-full md:col-span-2">
+                    <h2 class="text-sm sm:text-base font-bold text-yellow-400 mb-2 uppercase tracking-wide shrink-0">Готуються (Очікують)</h2>
+                    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 overflow-y-auto pr-1 flex-1 min-h-0 content-start">
+                        <template :key="item.id" x-for="item in waitingItems">
+                            <div class="bg-gray-900 border border-gray-700 rounded-lg p-1.5 text-center flex flex-col justify-center gap-0.5 h-[95px] shrink-0">
+                                <span class="text-xl sm:text-2xl font-extrabold text-yellow-300 font-mono block leading-none tracking-tight" x-text="'#' + item.ticket_number"></span>
+                                <div class="text-[11px] sm:text-xs text-gray-300 font-mono font-semibold leading-tight truncate" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                                <div class="text-[10px] sm:text-[11px] text-gray-100 font-mono font-semibold leading-tight line-clamp-2 break-words" :title="formatSizesSummary(item.shoe_sizes, 500)"
+                                     x-text="typeof formatSizesSummary === 'function'
+                                 ? formatSizesSummary(item.shoe_sizes) : (Array.isArray(item.shoe_sizes)
+                                 ? item.shoe_sizes.join(', ') : (item.shoe_sizes || '—'))">
+                                </div>
+                            </div>
                         </template>
-                        <div class="text-[10px] text-gray-300 font-mono break-words mt-0.5" :title="formatSizesSummary(item.shoe_sizes, 500)" x-text="'Розмір(и): ' + formatSizesSummary(item.shoe_sizes)"></div>
                     </div>
-                </template>
+                    <template x-if="waitingItems.length === 0">
+                        <div class="text-center py-6 text-gray-500 font-medium text-sm m-auto">Черга порожня</div>
+                    </template>
+                </div>
             </div>
-            <template x-if="callingItems.length === 0">
-                <div class="text-center py-6 text-gray-500 font-medium text-sm m-auto">Немає активних викликів</div>
-            </template>
-        </div>
 
-        <!-- QUEUED  -->
-        <div class="bg-gray-800/80 rounded-2xl p-4 border border-gray-700 shadow-xl flex flex-col">
-            <h2 class="text-base sm:text-lg font-bold text-yellow-400 mb-3 uppercase tracking-wide">Готуються (Очікують)</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <template :key="item.id" x-for="item in waitingItems">
-                    <div class="bg-gray-900 border border-gray-700 rounded-lg p-3 text-center">
-                        <span class="text-xl sm:text-2xl font-bold text-yellow-300 font-mono block leading-tight" x-text="'#' + item.ticket_number"></span>
-                        <div class="text-[11px] text-gray-300 font-mono mt-1" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
-                        <div class="text-[10px] text-gray-300 font-mono break-words mt-0.5" :title="formatSizesSummary(item.shoe_sizes, 500)"
-                             x-text="'Розмір(и): ' + (typeof formatSizesSummary === 'function'
-                             ? formatSizesSummary(item.shoe_sizes) : (Array.isArray(item.shoe_sizes)
-                             ? item.shoe_sizes.join(', ') : (item.shoe_sizes || '—')))">
+            <!-- ON ICE (SERVED) -->
+            <div x-show="!hideOnIce" class="bg-gray-800/80 rounded-2xl p-3 border border-blue-500/30 shadow-xl w-full flex flex-col min-h-0 bottom-section-wrapper h-full">
+                <h2 class="text-sm sm:text-base font-bold text-blue-400 mb-2 uppercase tracking-wide flex items-center shrink-0">
+                    <span class="inline-block w-2 h-2 bg-blue-500 rounded-full mr-2"></span>На льоду (Обслуговуються)
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-1.5 overflow-y-auto pr-1 flex-1 min-h-0 content-start">
+                    <template :key="item.id" x-for="item in servedItems">
+                        <div class="border rounded-lg p-1.5 text-center flex flex-col justify-center gap-0.5 transition h-[94px] shrink-0" x-data="{ get phase() { return getSessionPhase(item, now) } }" :class="isOverdue(item.session_end) ? 'bg-red-950/80 border-red-500 animate-pulse' : (phase?.phase === 'LACING' ? 'bg-teal-950/80 border-teal-500/60' : 'bg-blue-950/80 border-blue-500/50')">
+                            <span class="text-xl sm:text-2xl font-extrabold font-mono block leading-none tracking-tight" x-text="'#' + item.ticket_number" :class="isOverdue(item.session_end) ? 'text-red-300' : (phase?.phase === 'LACING' ? 'text-teal-300' : 'text-blue-300')"></span>
+                            <div class="text-[10px] sm:text-[11px] text-gray-100 font-mono font-semibold leading-tight line-clamp-1 break-words" :title="formatSizesSummary(item.shoe_sizes, 500)" x-text="formatSizesSummary(item.shoe_sizes)"></div>
+                            <div class="pt-0.5 mt-0.5 border-t border-gray-700/60 font-mono leading-none">
+                                <template x-if="phase && phase.phase === 'LACING'">
+                                    <div>
+                                        <span class="text-[11px] sm:text-xs font-bold tracking-tight block text-teal-300" x-text="phase.time"></span>
+                                        <span class="text-[8px] uppercase tracking-tighter block text-teal-400">👟 перевзування</span>
+                                    </div>
+                                </template>
+                                <template x-if="(!phase || phase.phase !== 'LACING') && item.session_end">
+                                    <div>
+                                        <span class="text-[11px] sm:text-xs font-bold tracking-tight block" :class="isOverdue(item.session_end) ? 'text-red-400' : 'text-blue-200'" x-text="getRemainingTime(item.session_end, now)"></span>
+                                        <span class="text-[8px] uppercase tracking-tighter block" :class="isOverdue(item.session_end) ? 'text-red-400 font-bold' : 'text-gray-400'" x-text="isOverdue(item.session_end) ? 'Час вийшов!' : 'залишилось'"></span>
+                                    </div>
+                                </template>
+                                <template x-if="!item.session_end">
+                                    <span class="text-[11px] sm:text-xs text-gray-300 font-semibold" x-text="item.duration_minutes + ' хв'"></span>
+                                </template>
+                            </div>
                         </div>
-                    </div>
+                    </template>
+                </div>
+                <template x-if="servedItems.length === 0">
+                    <div class="text-center py-2 text-gray-500 font-medium text-xs m-auto">Наразі нікого немає на льоду</div>
                 </template>
             </div>
-            <template x-if="waitingItems.length === 0">
-                <div class="text-center py-6 text-gray-500 font-medium text-sm m-auto">Черга порожня</div>
-            </template>
-        </div>
-
-        <!-- ON ICE (SERVED) -->
-        <div class="md:col-span-2 bg-gray-800/80 rounded-2xl p-3 border border-blue-500/30 shadow-2xl w-full flex flex-col min-h-0">
-            <h2 class="text-base sm:text-lg font-bold text-blue-400 mb-2 uppercase tracking-wide flex items-center shrink-0">
-                <span class="inline-block w-2.5 h-2.5 bg-blue-500 rounded-full mr-2"></span>На льоду (Обслуговуються)
-            </h2>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                <template :key="item.id" x-for="item in servedItems">
-                    <div class="border rounded-lg p-3 text-center flex flex-col justify-between transition" x-data="{ get phase() { return getSessionPhase(item, now) } }" :class="isOverdue(item.session_end) ? 'bg-red-950/80 border-red-500 animate-pulse' : (phase?.phase === 'LACING' ? 'bg-teal-950/80 border-teal-500/60' : 'bg-blue-950/80 border-blue-500/50')">
-                        <div>
-                            <span class="text-xl sm:text-2xl font-bold font-mono block leading-tight" x-text="'#' + item.ticket_number" :class="isOverdue(item.session_end) ? 'text-red-300' : (phase?.phase === 'LACING' ? 'text-teal-300' : 'text-blue-300')"></span>
-                            <div class="text-[10px] text-gray-300 font-mono break-words mt-0.5" :title="formatSizesSummary(item.shoe_sizes, 500)" x-text="'Розмір(и): ' + formatSizesSummary(item.shoe_sizes)"></div>
-                        </div>
-                        <div class="mt-2 pt-1.5 border-t border-gray-700/60 font-mono">
-                            <template x-if="phase && phase.phase === 'LACING'">
-                                <div>
-                                    <span class="text-xs font-bold tracking-tight block text-teal-300" x-text="phase.time"></span>
-                                    <span class="text-[8px] uppercase tracking-tighter block text-teal-400">👟 перевзування</span>
-                                </div>
-                            </template>
-                            <template x-if="(!phase || phase.phase !== 'LACING') && item.session_end">
-                                <div>
-                                    <span class="text-xs font-bold tracking-tight block" :class="isOverdue(item.session_end) ? 'text-red-400' : 'text-blue-200'" x-text="getRemainingTime(item.session_end, now)"></span>
-                                    <span class="text-[8px] uppercase tracking-tighter block" :class="isOverdue(item.session_end) ? 'text-red-400 font-bold' : 'text-gray-400'" x-text="isOverdue(item.session_end) ? 'Час вийшов!' : 'залишилось'"></span>
-                                </div>
-                            </template>
-                            <template x-if="!item.session_end">
-                                <span class="text-xs text-gray-300" x-text="'Час: ' + item.duration_minutes + ' хв'"></span>
-                            </template>
-                        </div>
-                    </div>
-                </template>
-            </div>
-            <template x-if="servedItems.length === 0">
-                <div class="text-center py-4 text-gray-500 font-medium text-sm">Наразі нікого немає на льоду</div>
-            </template>
         </div>
     </div>
-</div>
 </main>
-<footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/staff">Вхід для працівників ↗</a></footer>
+<footer class="ak-footer !max-w-none w-full !px-8">
+    <span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/staff">Вхід для працівників ↗</a>
+</footer>
 </body>
 </html>

@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.auth import KASA2_PIN, verify_kasa1, verify_kasa2
+from app.api.auth import verify_admin, verify_kasa1, verify_kasa2, verify_password
 from app.bot import send_telegram_notification
 from app.db import DBSession, get_db
 from app.inventory import revert_unfulfillable_calling_tickets
-from app.models import QueueItem, QueueStatus
+from app.models import QueueItem, QueueStatus, User
 from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, MassExtendRequest, \
     QueueItemResponse, UpdateTicketRequest
 from app.ws_manager import manager
@@ -86,44 +86,55 @@ async def update_ticket_details(item_id: int, payload: UpdateTicketRequest, db: 
 @router.post("/queue", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa1)])
 async def create_queue_entry(req: CreateQueueRequest, db: DBSession):
     # 1. Look up existing Telegram chat ID based on phone number
-    norm_phone = "".join(filter(str.isdigit, req.phone))
-    norm_phone_key = norm_phone[-9:] if len(norm_phone) >= 9 else norm_phone
-
     existing_chat_id = None
-    if norm_phone_key:
-        linked_items = db.query(QueueItem).filter(QueueItem.telegram_chat_id.isnot(None)).all()
-        for r in linked_items:
-            r_norm = "".join(filter(str.isdigit, r.phone))
-            r_norm_key = r_norm[-9:] if len(r_norm) >= 9 else r_norm
-            if r_norm_key == norm_phone_key:
-                existing_chat_id = r.telegram_chat_id
-                break
+    if req.phone:
+        norm_phone = "".join(filter(str.isdigit, req.phone))
+        norm_phone_key = norm_phone[-9:] if len(norm_phone) >= 9 else norm_phone
 
-    # 2. Retry loop for atomic ticket number allocation under concurrency
-    for _ in range(5):
-        last_ticket = db.query(QueueItem).order_by(QueueItem.id.desc()).first()
-        next_number = (last_ticket.ticket_number + 1) if last_ticket else 101
+        if norm_phone_key:
+            linked_items = db.query(QueueItem).filter(QueueItem.telegram_chat_id.isnot(None)).all()
+            for r in linked_items:
+                if r.phone:
+                    r_norm = "".join(filter(str.isdigit, r.phone))
+                    r_norm_key = r_norm[-9:] if len(r_norm) >= 9 else r_norm
+                    if r_norm_key == norm_phone_key:
+                        existing_chat_id = r.telegram_chat_id
+                        break
 
-        item = QueueItem(
-            ticket_number=next_number,
-            phone=req.phone,
-            people_count=len(req.shoe_sizes),
-            shoe_sizes=req.shoe_sizes,
-            duration_minutes=req.duration_minutes,
-            comment=req.comment,
-            telegram_chat_id=existing_chat_id,
-        )
+    # 2. Визначаємо наступний номер на основі максимального існуючого в БД (або стартуємо з 101)
+    # Це безпечніше і швидше, ніж ручний цикл із частими IntegrityError
+    last_ticket = db.query(QueueItem).order_by(QueueItem.ticket_number.desc()).first()
+    next_number = (last_ticket.ticket_number + 1) if (last_ticket and last_ticket.ticket_number >= 101) else 101
+
+    item = QueueItem(
+        ticket_number=next_number,
+        phone=req.phone,
+        people_count=len(req.shoe_sizes),
+        shoe_sizes=req.shoe_sizes,
+        duration_minutes=req.duration_minutes,
+        comment=req.comment,
+        telegram_chat_id=existing_chat_id,
+    )
+    db.add(item)
+
+    try:
+        db.commit()
+        db.refresh(item)
+        await manager.broadcast("QUEUE_UPDATED")
+        return item
+    except IntegrityError as e:
+        db.rollback()
+        # Якщо сталася гонка (двоє касирів клікнули в мілісекунду), беремо абсолютний максимум + 1 повторною спробою
+        db.expire_all()
+        last_ticket = db.query(QueueItem).order_by(QueueItem.ticket_number.desc()).first()
+        next_number = (last_ticket.ticket_number + 1) if (last_ticket and last_ticket.ticket_number >= 101) else 101
+
+        item.ticket_number = next_number
         db.add(item)
-        try:
-            db.commit()
-            db.refresh(item)
-            await manager.broadcast("QUEUE_UPDATED")
-            return item
-        except IntegrityError:
-            db.rollback()
-            continue
-
-    raise HTTPException(status_code=500, detail="Could not allocate unique ticket number due to high concurrency.")
+        db.commit()
+        db.refresh(item)
+        await manager.broadcast("QUEUE_UPDATED")
+        return item
 
 
 @router.post("/queue/{item_id}/cancel", response_model=QueueItemResponse, dependencies=[Depends(verify_kasa2)])
@@ -296,11 +307,13 @@ async def toggle_stop_timer(item_id: int, db: Session = Depends(get_db)):
 
 @router.post("/queue/mass-extend", dependencies=[Depends(verify_kasa2)])
 async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends(get_db)):
-    if payload.admin_password != KASA2_PIN:
+    admin_users = db.query(User).filter(User.role == "admin").all()
+    entered_pass = payload.effective_password
+
+    if not any(verify_password(entered_pass, u.password_hash) for u in admin_users):
         raise HTTPException(status_code=403, detail="Невірний пароль адміністратора")
 
-    if payload.minutes <= 0:
-        raise HTTPException(status_code=400, detail="Кількість хвилин має бути більшою за нуль")
+    minutes_to_add = payload.minutes if payload.minutes > 0 else 10
 
     now = datetime.now(timezone.utc)
     updated_count = 0
@@ -314,11 +327,11 @@ async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends
 
     for item in active_items:
         if str(item.status) in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]:
-            item.called_at += timedelta(minutes=payload.minutes) if item.called_at else now
+            item.called_at += timedelta(minutes=minutes_to_add) if item.called_at else now
         else:
-            item.duration_minutes += payload.minutes
+            item.duration_minutes += minutes_to_add
             if item.session_end:
-                item.session_end += timedelta(minutes=payload.minutes)
+                item.session_end += timedelta(minutes=minutes_to_add)
             else:
                 item.session_start = item.session_start or now
                 item.session_end = now + timedelta(minutes=item.duration_minutes)
