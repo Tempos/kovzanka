@@ -112,11 +112,11 @@
                                         <template x-if="item.session_end">
                                             <span class="text-xs text-blue-600" x-text="'до ' + formatTime(item.session_end)"></span>
                                         </template>
-                                        <template x-if="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && getOverdueTime(item.session_end, item)">
-                                            <span :title="item.overtime_stopped_at ? 'Overtime зупинено на ' + getOverdueTime(item.session_end, item) : 'Протерміновано на ' + getOverdueTime(item.session_end, item)"
+                                        <template x-if="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && getOverdueTime(item.session_end, item, now)">
+                                            <span :title="item.overtime_stopped_at ? 'Overtime зупинено на ' + getOverdueTime(item.session_end, item, now) : 'Протерміновано на ' + getOverdueTime(item.session_end, item, now)"
                                                   :class="item.overtime_stopped_at ? 'bg-slate-900 text-white border-slate-700' : 'bg-red-100 text-red-800 border-red-200 animate-pulse'"
                                                   class="mt-1 inline-flex items-center w-max px-2.5 py-0.5 rounded-full text-xs font-bold border cursor-help shadow-sm">
-                                                <span x-text="item.overtime_stopped_at ? '⏸️ +' : '⏱️ +'"></span><span x-text="getOverdueTime(item.session_end, item)"></span>
+                                                <span x-text="item.overtime_stopped_at ? '⏸️ +' : '⏱️ +'"></span><span x-text="getOverdueTime(item.session_end, item, now)"></span>
                                             </span>
                                         </template>
                                     </div>
