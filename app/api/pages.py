@@ -31,14 +31,30 @@ def inventory_page(request: Request, admin_session: str = Cookie(None), kasa2_se
 def kasa1_page(request: Request, kasa1_session: str = Cookie(None), admin_session: str = Cookie(None)):
     if not (is_authenticated_kasa1(kasa1_session) or is_authenticated_admin(admin_session)):
         return RedirectResponse(url="/login?role=kasa1&next=/kasa1", status_code=303)
-    return templates.TemplateResponse(request, "kasa1.html")
+
+    is_admin = is_authenticated_admin(admin_session)
+    is_kasa1 = is_authenticated_kasa1(kasa1_session) and not is_admin
+
+    return templates.TemplateResponse(
+        request=request,
+        name="kasa1.html",
+        context={"is_admin": is_admin, "is_kasa1": is_kasa1, "is_kasa2": False}
+    )
 
 
 @router.get("/kasa2")
 def kasa2_page(request: Request, kasa2_session: str = Cookie(None), admin_session: str = Cookie(None)):
     if not (is_authenticated_kasa2(kasa2_session) or is_authenticated_admin(admin_session)):
         return RedirectResponse(url="/login?role=kasa2&next=/kasa2", status_code=303)
-    return templates.TemplateResponse(request, "kasa2.html")
+
+    is_admin = is_authenticated_admin(admin_session)
+    is_kasa2 = is_authenticated_kasa2(kasa2_session) and not is_admin
+
+    return templates.TemplateResponse(
+        request=request,
+        name="kasa2.html",
+        context={"is_admin": is_admin, "is_kasa2": is_kasa2, "is_kasa2": False}
+    )
 
 
 @router.get("/staff")
@@ -51,18 +67,12 @@ def staff_page(request: Request, kasa1_session: str = Cookie(None), kasa2_sessio
     is_admin = is_authenticated_admin(admin_session)
     is_kasa2 = is_authenticated_kasa2(kasa2_session) and not is_admin
     is_kasa1 = is_authenticated_kasa1(kasa1_session) and not is_admin
-
     users = db.query(User).all() if is_admin else []
 
     return templates.TemplateResponse(
         request=request,
         name="staff.html",
-        context={
-            "is_admin": is_admin,
-            "is_kasa2": is_kasa2,
-            "is_kasa1": is_kasa1,
-            "users": users
-        }
+        context={"is_admin": is_admin, "is_kasa2": is_kasa2, "is_kasa1": is_kasa1, "users": users}
     )
 
 

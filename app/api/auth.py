@@ -37,9 +37,6 @@ def login(data: RoleLoginRequest, request: Request, response: Response, db: Sess
     assigned_role = (user.role or "").strip().lower()
     session_token = secrets.token_hex(32)
 
-    print(assigned_role)
-
-    # Чіткий розподіл ролей
     if assigned_role == "admin":
         ADMIN_SESSIONS.add(session_token)
         KASA1_SESSIONS.add(session_token)
