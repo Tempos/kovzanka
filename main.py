@@ -3,8 +3,10 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 from app.api import auth, inventory, pages, queue, status
+from app.api.auth import get_password_hash
 from app.bot import init_telegram_bot, stop_telegram_bot
 from app.inventory import init_inventory_db
+from app.models import User
 
 load_dotenv()
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +20,22 @@ from fastapi import Cookie, FastAPI, HTTPException, Request
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse
+import os
+
+
+def init_default_users(db: SessionLocal):
+    default_users = [
+        {"username": "admin", "role": "admin", "password": os.getenv("ADMIN_PIN", "0000")},
+        {"username": "kasa1", "role": "kasa1", "password": os.getenv("KASA1_PIN", "1111")},
+        {"username": "kasa2", "role": "kasa2", "password": os.getenv("KASA2_PIN", "2222")}
+    ]
+    for user_data in default_users:
+        existing = db.query(User).filter(User.username == user_data["username"]).first()
+        if not existing:
+            hashed_password = get_password_hash(user_data["password"])
+            new_user = User(username=user_data["username"],password_hash=hashed_password,role=user_data["role"])
+            db.add(new_user)
+    db.commit()
 
 
 @asynccontextmanager
@@ -27,9 +45,9 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         init_inventory_db(db)
+        init_default_users(db)
     finally:
         db.close()
-
     await init_telegram_bot()
     yield
     await stop_telegram_bot()
@@ -48,18 +66,16 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/openapi.json", include_in_schema=False)
-def get_openapi_endpoint(kasa1_session: str = Cookie(None), kasa2_session: str = Cookie(None)):
-    session = kasa1_session or kasa2_session
-    if not auth.is_authenticated_worker(session):
+def get_openapi_endpoint(admin_session: str = Cookie(None)):
+    if not auth.is_authenticated_kasa2(admin_session):
         raise HTTPException(status_code=401, detail="Unauthorized")
     return get_openapi(title=app.title, version=app.version, routes=app.routes)
 
 
 # Custom Protected Swagger UI Docs
 @app.get("/docs", include_in_schema=False)
-def custom_swagger_ui(request: Request, kasa1_session: str = Cookie(None), kasa2_session: str = Cookie(None)):
-    session = kasa1_session or kasa2_session
-    if not auth.is_authenticated_worker(session):
+def custom_swagger_ui(request: Request, admin_session: str = Cookie(None), ):
+    if not auth.is_authenticated_kasa2(admin_session):
         return RedirectResponse(url="/login?next=/docs", status_code=303)
     return get_swagger_ui_html(openapi_url="/openapi.json", title="API Docs - Персонал")
 

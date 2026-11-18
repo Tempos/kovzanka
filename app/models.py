@@ -11,6 +11,24 @@ class Base(DeclarativeBase):
     pass
 
 
+class AdminUser(Base):
+    __tablename__ = "admin_users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), default="kasa")  # 'admin', 'kasa1', 'kasa2'
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(64), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)  # Зберігаємо тільки хеш!
+    role = Column(String(32), default="cashier")  # 'admin' або 'cashier'
+
+
 class SkateInventory(Base):
     __tablename__ = "skate_inventory"
 

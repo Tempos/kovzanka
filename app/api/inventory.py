@@ -1,10 +1,10 @@
 import re
 import traceback
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Cookie
 from sqlalchemy.orm import Session
 
-from app.api.auth import is_authenticated_kasa2, verify_kasa2
+from app.api.auth import is_authenticated_kasa2, is_authenticated_admin, verify_kasa2
 from app.db import get_db
 from app.inventory import calculate_live_inventory, process_range_expansion, upsert_inventory_item
 from app.models import QueueItem, QueueStatus, SkateInventory
@@ -77,7 +77,7 @@ async def update_inventory_item(payload: InventoryUpdatePayload, db: Session = D
 
 
 @router.get("/inventory")
-def get_inventory_status(request: Request, db: Session = Depends(get_db)):
+def get_inventory_status(request: Request, db: Session = Depends(get_db), admin_session: str = Cookie(None), kasa2_session: str = Cookie(None)):
     """Exposes current counts to cashiers for inventory tracking."""
     active_skaters = db.query(QueueItem).filter(
         QueueItem.status.in_([QueueStatus.WAITING, QueueStatus.CALLING, QueueStatus.SERVED])
@@ -86,9 +86,8 @@ def get_inventory_status(request: Request, db: Session = Depends(get_db)):
     db_inventory = db.query(SkateInventory).filter(SkateInventory.is_deleted == False).all()
     live_inventory = calculate_live_inventory(active_skaters, db_inventory)
 
-    # Check if the requester is authenticated as Kasa 2 / Admin
-    kasa2_cookie = request.cookies.get("kasa2_session")
-    is_admin = is_authenticated_kasa2(kasa2_cookie)
+    # Check if the requester is authenticated as Admin or Kasa 2
+    is_admin = is_authenticated_admin(admin_session) or is_authenticated_kasa2(kasa2_session)
 
     for item in db_inventory:
         if item.size not in live_inventory:

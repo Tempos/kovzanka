@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.auth import KASA2_PIN, verify_kasa1, verify_kasa2
+from app.api.auth import verify_admin, verify_kasa1, verify_kasa2, verify_password
 from app.bot import send_telegram_notification
 from app.db import DBSession, get_db
 from app.inventory import revert_unfulfillable_calling_tickets
-from app.models import QueueItem, QueueStatus
+from app.models import QueueItem, QueueStatus, User
 from app.schemas import CancelTicketRequest, CreateQueueRequest, ExtendSessionRequest, MassExtendRequest, \
     QueueItemResponse, UpdateTicketRequest
 from app.ws_manager import manager
@@ -296,11 +296,13 @@ async def toggle_stop_timer(item_id: int, db: Session = Depends(get_db)):
 
 @router.post("/queue/mass-extend", dependencies=[Depends(verify_kasa2)])
 async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends(get_db)):
-    if payload.admin_password != KASA2_PIN:
+    admin_users = db.query(User).filter(User.role == "admin").all()
+    entered_pass = payload.effective_password
+
+    if not any(verify_password(entered_pass, u.password_hash) for u in admin_users):
         raise HTTPException(status_code=403, detail="Невірний пароль адміністратора")
 
-    if payload.minutes <= 0:
-        raise HTTPException(status_code=400, detail="Кількість хвилин має бути більшою за нуль")
+    minutes_to_add = payload.minutes if payload.minutes > 0 else 10
 
     now = datetime.now(timezone.utc)
     updated_count = 0
@@ -314,11 +316,11 @@ async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends
 
     for item in active_items:
         if str(item.status) in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]:
-            item.called_at += timedelta(minutes=payload.minutes) if item.called_at else now
+            item.called_at += timedelta(minutes=minutes_to_add) if item.called_at else now
         else:
-            item.duration_minutes += payload.minutes
+            item.duration_minutes += minutes_to_add
             if item.session_end:
-                item.session_end += timedelta(minutes=payload.minutes)
+                item.session_end += timedelta(minutes=minutes_to_add)
             else:
                 item.session_start = item.session_start or now
                 item.session_end = now + timedelta(minutes=item.duration_minutes)
