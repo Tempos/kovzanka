@@ -26,21 +26,7 @@
 <body class="ak-site ak-kasa1 bg-slate-100 min-h-screen p-6" x-data="kasa1()">
 <header class="ak-header">
     <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
-    <nav class="ak-nav" aria-label="Головна навігація">
-        <a href="/staff">Персонал</a>
-        {% if is_admin or is_kasa1 %}
-        <a href="/kasa1">Реєстрація</a>
-        {% endif %}
-        {% if is_admin or is_kasa2 %}
-        <a href="/kasa2">Видача</a>
-        {% endif %}
-        <a href="/inventory">Залишки</a>
-        <a href="/display">Табло</a>
-        {% if is_admin %}
-        <a href="/docs">API</a>
-        {% endif %}
-        <a href="/logout">Вихід</a>
-    </nav>
+    {% include "templates/nav.html" %}
 </header>
 <main class="ak-page">
     <div class="card">
@@ -133,7 +119,8 @@
                     <span class="font-bold text-blue-600" x-text="createdTicket.duration_minutes + ' хв'"></span> |
                     Розміри: <span class="font-bold" x-text="createdTicket.shoe_sizes.join(', ')"></span>
                 </div>
-                <p class="text-xs text-slate-400">Лінк статусу:<a :href="statusLink(createdTicket)" class="underline text-blue-600 font-mono" target="_blank" x-text="statusLink(createdTicket)"></a></p>
+                <p class="text-xs text-slate-400">Лінк статусу:<a :href="statusLink(createdTicket)" class="underline text-blue-600 font-mono" target="_blank" x-text="statusLink(createdTicket)"></a>
+                </p>
             </div>
         </template>
     </div>

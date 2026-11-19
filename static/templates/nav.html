@@ -1,0 +1,11 @@
+<nav class="ak-nav" aria-label="Головна навігація">
+    <a href="/">Головна</a>
+    {% if is_admin or is_kasa1 or is_kasa2%}<a href="/staff">Персонал</a>{% endif %}
+    {% if is_admin or is_kasa1 %}<a href="/kasa1">Реєстрація</a>{% endif %}
+    {% if is_admin or is_kasa2 %}<a href="/kasa2">Видача</a>{% endif %}
+    {% if not (is_admin or is_kasa1 or is_kasa2) %}<a href="/status">Мій талон</a>{% endif %}
+    <a href="/inventory">Залишки</a>
+    {% if is_admin %}<a href="/docs">API</a>{% endif %}
+    <a href="/display">Табло</a>
+    {% if is_admin or is_kasa1 or is_kasa2 %}<a href="/logout">Вихід</a>{% endif %}
+</nav>

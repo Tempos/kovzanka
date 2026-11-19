@@ -12,21 +12,7 @@
 <body class="ak-site ak-staff bg-gray-100 min-h-screen" x-data="{ showUsersModal: false, showCreateModal: false, editModal: false, currentEdit: {} }">
 <header class="ak-header">
     <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
-    <nav class="ak-nav" aria-label="Головна навігація">
-        <a href="/staff">Персонал</a>
-        {% if is_admin or is_kasa1 %}
-        <a href="/kasa1">Реєстрація</a>
-        {% endif %}
-        {% if is_admin or is_kasa2 %}
-        <a href="/kasa2">Видача</a>
-        {% endif %}
-        <a href="/inventory">Залишки</a>
-        <a href="/display">Табло</a>
-        {% if is_admin %}
-        <a href="/docs">API</a>
-        {% endif %}
-        <a href="/logout">Вихід</a>
-    </nav>
+    {% include "templates/nav.html" %}
 </header>
 <main class="ak-page">
     <div class="ak-eyebrow">Ковзанка · Робочий простір</div>
