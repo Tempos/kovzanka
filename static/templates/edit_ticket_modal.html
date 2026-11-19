@@ -1,3 +1,5 @@
+{% from "templates/size_tile.html" import size_tile -%}
+
 <!-- МОДАЛЬНЕ ВІКНО РЕДАГУВАННЯ КВИТКА -->
 <div x-show="editModal.open" x-cloak class="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto" @click.away="editModal.open = false">
@@ -45,27 +47,7 @@
         <!-- Сітка кнопок розмірів -->
         <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200 mb-4">
             <template x-for="(data, size) in filteredEditInventory" :key="size">
-                <button type="button" @click="addEditSize(size)" @contextmenu.prevent="removeEditSize(size)"
-                        :class="getEditSizeCount(size) > 0 ? 'size-btn-active' : (getEffectiveAvailable(size) > 0 ? 'size-btn-idle' : 'bg-red-50 text-red-900 border-red-200/60 hover:bg-red-100/50')"
-                        class="size-btn relative flex flex-col items-center justify-center rounded-xl border text-center transition select-none cursor-pointer min-w-0 py-2">
-
-                    <!-- Номер розміру -->
-                    <span class="text-base sm:text-lg font-black tracking-tight font-mono" x-text="parseSizeNum(size)"></span>
-
-                    <!-- Категорія -->
-                    <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-tighter" :class="getEditSizeCount(size) > 0 ? 'text-blue-100' : 'text-slate-500'" x-text="parseSizeCat(size)"></span>
-
-                    <!-- Живий індикатор залишку -->
-                    <span class="text-[9px] sm:text-[10px] font-bold mt-0.5 tracking-tighter whitespace-nowrap"
-                          :class="getEditSizeCount(size) > 0 ? 'text-blue-100' : (getEffectiveAvailable(size) > 0 ? 'text-slate-400' : 'text-red-500 font-extrabold')"
-                          x-text="Math.max(0, getEffectiveAvailable(size) - getEditSizeCount(size)) + '/' + data.total"></span>
-                    <span class="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-black w-5 h-5 rounded-full flex items-center justify-center border border-white shadow" x-show="getEditSizeCount(size) > 0" x-text="getEditSizeCount(size)"></span>
-
-                    <!-- Індикатор часу повернення -->
-                    <template x-if="getEffectiveAvailable(size) === 0 && data.next_available_in_mins !== null">
-                        <span class="absolute -bottom-1.5 bg-yellow-400 text-slate-950 font-mono text-[9px] font-black px-1 rounded shadow" x-text="'~' + data.next_available_in_mins + 'хв'"></span>
-                    </template>
-                </button>
+                {{ size_tile('addEditSize', 'removeEditSize', 'getEditSizeCount', 'getEffectiveAvailable(size)') }}
             </template>
         </div>
 
