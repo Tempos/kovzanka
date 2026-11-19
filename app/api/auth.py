@@ -31,15 +31,12 @@ class RoleLoginRequest(BaseModel):
 def login(data: RoleLoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     users = db.query(User).all()
 
-    if not (user := next((u for u in users if verify_password(data.password, u.password_hash)), None, )):
+    if not (user := next((u for u in users if verify_password(data.password, u.password_hash)), None)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Невірний пароль")
 
     assigned_role = (user.role or "").strip().lower()
     session_token = secrets.token_hex(32)
 
-    print(assigned_role)
-
-    # Чіткий розподіл ролей
     if assigned_role == "admin":
         ADMIN_SESSIONS.add(session_token)
         KASA1_SESSIONS.add(session_token)
@@ -62,7 +59,7 @@ def login(data: RoleLoginRequest, request: Request, response: Response, db: Sess
         httponly=True,
         samesite="lax",
         secure=os.getenv("COOKIE_SECURE", "true").lower() == "true",
-        max_age=36000
+        max_age=36000,
     )
     return {"status": "success", "role": assigned_role}
 
@@ -75,7 +72,6 @@ def logout_endpoint(
         kasa2_session: Optional[str] = Cookie(None),
         admin_session: Optional[str] = Cookie(None),
 ):
-    # Reject cross-site requests by verifying Origin or Referer matches the host
     origin = request.headers.get("origin")
     referer = request.headers.get("referer")
     host = request.url.netloc
@@ -104,32 +100,74 @@ def logout_endpoint(
     return response
 
 
-def is_authenticated_kasa1(kasa1_session: str = None, admin_session: str = None) -> bool:
-    return bool(
-        (kasa1_session and kasa1_session in KASA1_SESSIONS) or (admin_session and admin_session in ADMIN_SESSIONS))
+def get_authenticated_roles(
+        admin_session: Optional[str] = None,
+        kasa1_session: Optional[str] = None,
+        kasa2_session: Optional[str] = None,
+) -> set[str]:
+    roles: set[str] = set()
+    if admin_session and admin_session in ADMIN_SESSIONS:
+        roles.update({"admin", "kasa1", "kasa2"})
+    if kasa1_session and kasa1_session in KASA1_SESSIONS:
+        roles.add("kasa1")
+    if kasa2_session and kasa2_session in KASA2_SESSIONS:
+        roles.add("kasa2")
+    return roles
 
 
-def is_authenticated_kasa2(kasa2_session: str = None, admin_session: str = None) -> bool:
-    return bool(
-        (kasa2_session and kasa2_session in KASA2_SESSIONS) or (admin_session and admin_session in ADMIN_SESSIONS))
+def has_any_role(
+        allowed_roles: set[str],
+        admin_session: Optional[str] = None,
+        kasa1_session: Optional[str] = None,
+        kasa2_session: Optional[str] = None,
+) -> bool:
+    return bool(get_authenticated_roles(admin_session, kasa1_session, kasa2_session) & allowed_roles)
 
 
-def is_authenticated_admin(admin_session: str = None) -> bool:
-    return bool(admin_session and admin_session in ADMIN_SESSIONS)
+def build_role_context(
+        admin_session: Optional[str] = None,
+        kasa1_session: Optional[str] = None,
+        kasa2_session: Optional[str] = None,
+) -> dict:
+    roles = get_authenticated_roles(admin_session, kasa1_session, kasa2_session)
+    is_admin = "admin" in roles
+    is_kasa2 = "kasa2" in roles and not is_admin
+    is_kasa1 = "kasa1" in roles and not is_admin and not is_kasa2
+    role = "admin" if is_admin else "kasa2" if is_kasa2 else "kasa1" if is_kasa1 else None
+
+    return {
+        "is_admin": is_admin,
+        "is_kasa1": is_kasa1,
+        "is_kasa2": is_kasa2,
+        "role": role,
+        "roles": roles,
+    }
+
+
+def is_authenticated_kasa1(kasa1_session: Optional[str] = None, admin_session: Optional[str] = None) -> bool:
+    return "kasa1" in get_authenticated_roles(admin_session=admin_session, kasa1_session=kasa1_session)
+
+
+def is_authenticated_kasa2(kasa2_session: Optional[str] = None, admin_session: Optional[str] = None) -> bool:
+    return "kasa2" in get_authenticated_roles(admin_session=admin_session, kasa2_session=kasa2_session)
+
+
+def is_authenticated_admin(admin_session: Optional[str] = None) -> bool:
+    return "admin" in get_authenticated_roles(admin_session=admin_session)
 
 
 # FastAPI dependencies
-def verify_kasa1(kasa1_session: str = Cookie(None), admin_session: str = Cookie(None)):
+def verify_kasa1(kasa1_session: Optional[str] = Cookie(None), admin_session: Optional[str] = Cookie(None)):
     if not is_authenticated_kasa1(kasa1_session, admin_session):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Необхідна авторизація Каси 1")
 
 
-def verify_kasa2(kasa2_session: str = Cookie(None), admin_session: str = Cookie(None)):
+def verify_kasa2(kasa2_session: Optional[str] = Cookie(None), admin_session: Optional[str] = Cookie(None)):
     if not is_authenticated_kasa2(kasa2_session, admin_session):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Необхідна авторизація Каси 2")
 
 
-def verify_admin(admin_session: str = Cookie(None)):
+def verify_admin(admin_session: Optional[str] = Cookie(None)):
     if not is_authenticated_admin(admin_session):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Необхідні права адміністратора")
 
@@ -140,7 +178,7 @@ def verify_password(plain_password: str, stored_hash: str) -> bool:
         if not stored_hash or "$" not in stored_hash:
             return False
         salt, pwd_hash = stored_hash.split("$", 1)
-        check_hash = hashlib.sha256((salt + plain_password).encode('utf-8')).hexdigest()
+        check_hash = hashlib.sha256((salt + plain_password).encode("utf-8")).hexdigest()
         return check_hash == pwd_hash
     except Exception:
         return False
@@ -149,5 +187,5 @@ def verify_password(plain_password: str, stored_hash: str) -> bool:
 def get_password_hash(password: str) -> str:
     """Генерація безпечного хешу з сіллю через hashlib"""
     salt = secrets.token_hex(16)
-    pwd_hash = hashlib.sha256((salt + password).encode('utf-8')).hexdigest()
+    pwd_hash = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
     return f"{salt}${pwd_hash}"

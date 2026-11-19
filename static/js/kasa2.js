@@ -8,6 +8,10 @@ function kasa2App() {
         searchQuery: "",
         fetchTimer: null,
 
+        // --- SORTING (за замовчуванням — за номером талона, щоб рядки не стрибали при зміні статусу) ---
+        sortColumn: "ticket_number",
+        sortAsc: true,
+
         // --- MODALS (EDIT & CANCEL) ---
         editModal: {
             open: false,
@@ -18,7 +22,9 @@ function kasa2App() {
             sizes: [],
             originalSizes: [],
             activeTab: "figure",
-            comment: ""
+            comment: "",
+            issueStatus: "", // "" | "warning" | "danger"
+            issueNote: ""
         },
         cancelModal: {
             open: false,
@@ -34,10 +40,57 @@ function kasa2App() {
         },
 
         // --- COMPUTED PROPERTIES ---
-        get activeQueue() {
+        get issueFilter() {
+            const q = (this.searchQuery || "").trim().toLowerCase()
+            if (q === "!") return "warning"
+            if (q === "!!") return "danger"
+            if (q === "!!!") return "any"
+            if (q.length >= 3 && "проблема".startsWith(q)) return "danger"
+            if (q.length >= 3 && "увага".startsWith(q)) return "warning"
+            return null
+        },
+        toggleIssueFilter(value) {this.searchQuery = this.searchQuery.trim() === value ? "" : value},
+        sortBy(column) {
+            if (this.sortColumn === column) {
+                this.sortAsc = !this.sortAsc
+            } else {
+                this.sortColumn = column
+                this.sortAsc = true
+            }
+        },
+        sortItems(items) {
+            const statusOrder = {"ЧЕКАЄ": 0, "WAITING": 0, "ВИКЛИКАЄТЬСЯ": 1, "CALLING": 1, "ОБСЛУГОВУЄТЬСЯ": 2, "SERVED": 2}
+            const keyOf = (item) => {
+                switch (this.sortColumn) {
+                    case "phone": return item.phone ? String(item.phone).replace(/\D/g, "") : null
+                    case "session": return item.session_end ? (parseServerDate(item.session_end)?.getTime() ?? null) : null
+                    case "status": return statusOrder[item.status] ?? 99
+                    default: return item.ticket_number
+                }
+            }
+            const dir = this.sortAsc ? 1 : -1
+            return [...items].sort((a, b) => {
+                const ka = keyOf(a), kb = keyOf(b)
+                // порожні значення (немає телефону / сеанс ще не розпочато) завжди внизу
+                if (ka === null && kb !== null) return 1
+                if (kb === null && ka !== null) return -1
+                if (ka !== kb && ka !== null) {
+                    const cmp = typeof ka === "string" ? ka.localeCompare(kb, undefined, {numeric: true}) : ka - kb
+                    if (cmp !== 0) return cmp * dir
+                }
+                return a.ticket_number - b.ticket_number // однакові значення — завжди за номером
+            })
+        },
+        get activeQueue() {return this.sortItems(this.filteredActiveQueue)},
+        get filteredActiveQueue() {
             let items = this.queue.filter(i =>
                 ["ЧЕКАЄ", "ВИКЛИКАЄТЬСЯ", "ОБСЛУГОВУЄТЬСЯ", "WAITING", "CALLING", "SERVED"].includes(i.status)
             )
+
+            const flt = this.issueFilter
+            if (flt) {
+                return items.filter(i => flt === "any" ? (i.issue_status === "warning" || i.issue_status === "danger") : i.issue_status === flt)
+            }
 
             if (!this.searchQuery || this.searchQuery.trim() === "") {return items}
 
@@ -59,6 +112,8 @@ function kasa2App() {
             let items = this.queue.filter(i =>
                 ["ПОВЕРНЕНО", "СКАСОВАНО", "RETURNED", "CANCELLED"].includes(i.status)
             )
+
+            if (this.issueFilter) return [] // фільтр проблемних стосується лише активних квитків
 
             if (!this.searchQuery || this.searchQuery.trim() === "") {return items}
 
@@ -86,6 +141,16 @@ function kasa2App() {
             }
             return filtered
         },
+        // Лічильники рахуємо лише по активних квитках (закриті/скасовані не потребують уваги)
+        get issueTickets() {
+            return this.queue.filter(i =>
+                ["ЧЕКАЄ", "ВИКЛИКАЄТЬСЯ", "ОБСЛУГОВУЄТЬСЯ", "WAITING", "CALLING", "SERVED"].includes(i.status)
+                && (i.issue_status === "warning" || i.issue_status === "danger")
+            )
+        },
+        get warningTicketsCount() {return this.issueTickets.filter(i => i.issue_status === "warning").length},
+        get dangerTicketsCount() {return this.issueTickets.filter(i => i.issue_status === "danger").length},
+        get problemTicketsCount() {return this.issueTickets.length},
         get wsStatus() {return getWsStatus(this.wsConnected)},
 
         // --- TICKET EDITING ---
@@ -100,9 +165,36 @@ function kasa2App() {
                 sizes: [...currentSizes],
                 originalSizes: [...currentSizes],
                 activeTab: "figure",
-                comment: item.comment || ""
+                comment: item.comment || "",
+                issueStatus: item.issue_status || "",
+                issueNote: item.issue_note || ""
             }
             if (typeof this.fetchInventory === "function") {this.fetchInventory()}
+        },
+
+        async submitEdit() {
+            if (this.editModal.sizes.length === 0) return
+            try {
+                const res = await fetch(`/api/queue/${this.editModal.id}`, {
+                    method: "PATCH",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        duration_minutes: parseInt(this.editModal.duration),
+                        shoe_sizes: this.editModal.sizes,
+                        comment: this.editModal.comment,
+                        issue_status: this.editModal.issueStatus || null,
+                        issue_note: this.editModal.issueStatus ? (this.editModal.issueNote || null) : null
+                    })
+                })
+                if (res.ok) {
+                    this.editModal.open = false
+                    await this.fetchQueue()
+                    if (typeof this.fetchInventory === "function") await this.fetchInventory()
+                } else {
+                    const err = await res.json()
+                    alert(err.detail || "Помилка при оновленні квитка")
+                }
+            } catch (e) {console.error("Помилка редагування:", e)}
         },
 
         getEditSizeCount(size) {return this.editModal.sizes.filter(s => s === size).length},
@@ -124,29 +216,6 @@ function kasa2App() {
         },
 
         clearEditSizes() {this.editModal.sizes = []},
-
-        async submitEdit() {
-            if (this.editModal.sizes.length === 0) return
-            try {
-                const res = await fetch(`/api/queue/${this.editModal.id}`, {
-                    method: "PATCH",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({
-                        duration_minutes: parseInt(this.editModal.duration),
-                        shoe_sizes: this.editModal.sizes,
-                        comment: this.editModal.comment
-                    })
-                })
-                if (res.ok) {
-                    this.editModal.open = false
-                    await this.fetchQueue()
-                    if (typeof this.fetchInventory === "function") await this.fetchInventory()
-                } else {
-                    const err = await res.json()
-                    alert(err.detail || "Помилка при оновленні квитка")
-                }
-            } catch (e) {console.error("Помилка редагування:", e)}
-        },
 
         // --- TICKET CANCELLATION ---
         openCancelModal(item) {
@@ -266,6 +335,12 @@ function kasa2App() {
             }
         },
 
+        // Єдиний формат підпису сеансу: "90 хв • до 13:13" (або просто "90 хв", поки час закінчення невідомий)
+        sessionSummary(item) {
+            const duration = item.duration_minutes ? item.duration_minutes + " хв" : "—"
+            return item.session_end ? `${duration} • до ${formatTime(item.session_end)}` : duration
+        },
+
         getTimeDisplay(item) {
             const isActive = item.status === "ОБСЛУГОВУЄТЬСЯ" || item.status === "SERVED"
             if (isActive && item.session_end) {
@@ -311,6 +386,38 @@ function kasa2App() {
         },
 
         getSessionPhase(item) {return getSessionPhase(item, this.now)},
+
+        // --- ISSUE STATUS MANAGEMENT ---
+        // Один клік: поставити позначку; повторний клік по тій самій — зняти
+        toggleIssue(item, status) {
+            return this.setIssueStatus(item.id, item.issue_status === status ? null : status)
+        },
+
+        async setIssueStatus(itemId, status) {
+            const item = this.queue.find(i => i.id === itemId)
+            const prevStatus = item ? item.issue_status : null
+            const prevNote = item ? item.issue_note : null
+            if (item) {
+                item.issue_status = status // Миттєва зміна кольору в UI
+                if (!status) item.issue_note = null
+            }
+
+            try {
+                const res = await fetch(`/api/queue/${itemId}/issue`, {
+                    method: "PATCH",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({issue_status: status})
+                })
+                if (!res.ok) {
+                    if (item) {item.issue_status = prevStatus; item.issue_note = prevNote}
+                    const err = await res.json()
+                    alert(err.detail || "Не вдалося оновити статус проблеми")
+                } else {await this.fetchQueue()}
+            } catch (e) {
+                if (item) {item.issue_status = prevStatus; item.issue_note = prevNote}
+                console.error("Помилка оновлення статусу проблеми:", e)
+            }
+        },
 
         // --- LIFECYCLE ---
         async init() {

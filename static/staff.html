@@ -9,42 +9,19 @@
     <link rel="stylesheet" href="/static/css/akulamama.css">
     <script defer src="/static/js/akulamama.js"></script>
 </head>
-<body class="ak-site ak-staff bg-gray-100 min-h-screen"
-      x-data="{ showUsersModal: false, showCreateModal: false, editModal: false, currentEdit: {} }">
+<body class="ak-site ak-staff bg-gray-100 min-h-screen" x-data="{ showUsersModal: false, showCreateModal: false, editModal: false, currentEdit: {} }">
 <header class="ak-header">
-    <a href="/" class="ak-logo" aria-label="Акула Мама — головна">
-        <img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span>
-    </a>
-    <nav class="ak-nav" aria-label="Головна навігація">
-    {% if is_admin %}
-        <a href="/staff">Персонал</a>
-        <a href="/kasa1">Реєстрація</a>
-        <a href="/kasa2">Видача</a>
-        <a href="/inventory">Залишки</a>
-        <a href="/docs">API</a>
-        <a href="/logout">Вихід</a>
-    {% elif is_kasa2 %}
-        <a href="/staff">Персонал</a>
-        <a href="/kasa2">Видача</a>
-        <a href="/inventory">Залишки</a>
-        <a href="/logout">Вихід</a>
-    {% elif is_kasa1 %}
-        <a href="/staff">Персонал</a>
-        <a href="/kasa1">Реєстрація</a>
-        <a href="/inventory">Залишки</a>
-        <a href="/logout">Вихід</a>
-    {% endif %}
-</nav>
+    <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
+    {% include "templates/nav.html" %}
 </header>
-
 <main class="ak-page">
     <div class="ak-eyebrow">Ковзанка · Робочий простір</div>
     <div class="ak-section-heading">
         <h1>Панель персоналу</h1>
         <span>
             {% if is_admin %}Панель адміністратора · повний доступ до системних функцій та кас
-            {% elif is_kasa2 %}Робочий простір Каси 2 · видача ковзанів та залишки
             {% elif is_kasa1 %}Робочий простір Каси 1 · реєстрація гостей та залишки
+            {% elif is_kasa2 %}Робочий простір Каси 2 · видача ковзанів та залишки
             {% endif %}
         </span>
     </div>
@@ -54,7 +31,10 @@
         <!-- Каса 1 -->
         <a href="/kasa1" class="ak-nav-card">
             <div class="ak-card-top">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m13 6 5 5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m16 3 5 5-12 12-6 1 1-6Z"/>
+                    <path d="m13 6 5 5"/>
+                </svg>
                 <span class="ak-card-number">01</span>
             </div>
             <h3>Каса 1 · Реєстрація</h3>
@@ -67,7 +47,10 @@
         <!-- Каса 2 -->
         <a href="/kasa2" class="ak-nav-card">
             <div class="ak-card-top">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v8l-3 3v4h15c2-4-2-5-5-6l-2-9Z"/><path d="M7 18v3m10-3v3M2 22h19l2-2M9 7h4m-4 3h4"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M7 3v8l-3 3v4h15c2-4-2-5-5-6l-2-9Z"/>
+                    <path d="M7 18v3m10-3v3M2 22h19l2-2M9 7h4m-4 3h4"/>
+                </svg>
                 <span class="ak-card-number">02</span>
             </div>
             <h3>Каса 2 · Видача</h3>
@@ -109,7 +92,10 @@
         <!-- API Документація (Лише Адмін) -->
         <a href="/docs" class="ak-nav-card">
             <div class="ak-card-top">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="12" rx="3"/><path d="M8 10V6a4 4 0 0 1 8 0v4m-4 5v3"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="4" y="10" width="16" height="12" rx="3"/>
+                    <path d="M8 10V6a4 4 0 0 1 8 0v4m-4 5v3"/>
+                </svg>
                 <span class="ak-card-number">05</span>
             </div>
             <h3>Документація API</h3>
@@ -120,7 +106,12 @@
         <!-- Управління користувачами (Лише Адмін) -->
         <a href="#" @click.prevent="showUsersModal = true" class="ak-nav-card">
             <div class="ak-card-top">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
                 <span class="ak-card-number">06</span>
             </div>
             <h3>Управління користувачами</h3>
@@ -133,11 +124,8 @@
 
 {% if is_admin %}
 <!-- 1. МОДАЛЬНЕ ВІКНО СПИСКУ КОРИСТУВАЧІВ -->
-<div x-show="showUsersModal"
-     class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4"
-     style="display: none;"
-     @click.self="showUsersModal = false"
-     @keydown.escape.window="showUsersModal = false">
+<div x-show="showUsersModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4"
+     style="display: none;" @click.self="showUsersModal = false" @keydown.escape.window="showUsersModal = false">
 
     <div class="bg-[#1b313b] text-slate-100 rounded-2xl shadow-2xl max-w-4xl w-full p-4 sm:p-6 overflow-hidden border border-[#274452]">
         <div class="flex justify-between items-center mb-4 pb-3 border-b border-[#274452]">
@@ -191,9 +179,7 @@
         </div>
 
         <div class="mt-6 flex justify-end">
-            <button @click="showUsersModal = false" class="px-5 py-2 bg-[#274452] hover:bg-[#325364] text-white font-medium rounded-xl text-sm transition">
-                Закрити
-            </button>
+            <button @click="showUsersModal = false" class="px-5 py-2 bg-[#274452] hover:bg-[#325364] text-white font-medium rounded-xl text-sm transition">Закрити</button>
         </div>
     </div>
 </div>

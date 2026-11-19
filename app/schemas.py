@@ -40,6 +40,11 @@ class InventoryUpdatePayload(BaseModel):
     maintenance_count: Optional[int] = None
 
 
+class IssueStatusRequest(BaseModel):
+    issue_status: Optional[str] = Field(None, description="Статус проблеми: warning, danger або null")
+    issue_note: Optional[str] = Field(None, description="Необов'язкова примітка до проблеми")
+
+
 class LoginRequest(BaseModel):
     pin: str
 
@@ -63,6 +68,9 @@ class QueueItemResponse(BaseModel):
     shoe_sizes: List[str]
     comment: Optional[str] = None
     status: QueueStatus
+
+    issue_status: Optional[str] = None
+    issue_note: Optional[str] = None
 
     called_at: Optional[datetime] = None
     duration_minutes: int
@@ -96,3 +104,5 @@ class UpdateTicketRequest(BaseModel):
     duration_minutes: int | None = None
     shoe_sizes: List[str] | None = None
     comment: Optional[str] = None
+    issue_status: Optional[str] = None
+    issue_note: Optional[str] = None

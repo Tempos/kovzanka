@@ -65,6 +65,9 @@ class QueueItem(Base):
     comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[QueueStatus] = mapped_column(Enum(QueueStatus), default=QueueStatus.WAITING, index=True)
 
+    issue_status: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, default=None)
+    issue_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
+
     # time
     called_at = Column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc))

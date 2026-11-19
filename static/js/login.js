@@ -23,10 +23,10 @@ document.addEventListener("alpine:init", () => {
 
                 const data = await response.json()
 
-                if (nextUrl) {window.location.href = nextUrl
-                } else if (data.role === "admin") {window.location.href = "/admin"
-                } else if (data.role === "kasa1") {window.location.href = "/kasa1"
-                } else {window.location.href = "/kasa2"}
+                if (nextUrl) {window.location.href = nextUrl}
+                else if (data.role === "kasa1") {window.location.href = "/kasa1"}
+                else if (data.role === "kasa2") {window.location.href = "/kasa2"}
+                else {window.location.href = "/staff"}
             } catch (error) {this.errorMessage = error.message || "Помилка авторизації"}
         }
     }))

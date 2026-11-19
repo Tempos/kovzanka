@@ -1,0 +1,24 @@
+{% macro size_tile(add, remove, count, avail) %}
+<button type="button" @click="{{ add }}(size)" @contextmenu.prevent="{{ remove }}(size)"
+        :class="{{ count }}(size) > 0 ? 'size-btn-active' : ({{ avail }} > 0 ? 'size-btn-idle' : 'bg-red-50 text-red-900 border-red-200/60 hover:bg-red-100/50')"
+        class="size-btn relative flex flex-col items-center justify-center rounded-xl border text-center transition select-none cursor-pointer min-w-0 py-2">
+
+    <!-- Номер розміру -->
+    <span class="font-black font-mono leading-none whitespace-nowrap" x-text="parseSizeNum(size)" :class="parseSizeNum(size).length > 3 ? 'text-sm sm:text-base tracking-tighter' : 'text-base sm:text-lg tracking-tight'"></span>
+
+    <!-- Категорія -->
+    <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-tighter" x-text="parseSizeCat(size)" :class="{{ count }}(size) > 0 ? 'text-blue-100' : 'text-slate-500'"></span>
+
+    <!-- Живий індикатор залишку -->
+    <span class="text-[9px] sm:text-[10px] font-bold mt-0.5 tracking-tighter whitespace-nowrap" x-text="Math.max(0, {{ avail }} - {{ count }}(size)) + '/' + data.total"
+          :class="{{ count }}(size) > 0 ? 'text-blue-100' : ({{ avail }} > 0 ? 'text-slate-400' : 'text-red-500 font-extrabold')"></span>
+
+    <!-- Круглий лічильник кількості обраних пар -->
+    <span class="absolute -top-2 -right-2 bg-blue-600 text-white font-semibold shadow text-xs font-black w-5 h-5 rounded-full flex items-center justify-center border border-black" x-show="{{ count }}(size) > 0" x-text="{{ count }}(size)"></span>
+
+    <!-- Індикатор очікуваного часу повернення (якщо вільних 0) -->
+    <template x-if="{{ avail }} === 0 && data.next_available_in_mins !== null">
+        <span class="absolute -bottom-1.5 text-red-600 bg-red-100 border border-red-500 font-mono text-[10px] font-black px-1 rounded shadow animate-pulse" x-text="'~' + data.next_available_in_mins + ' хв'"></span>
+    </template>
+</button>
+{% endmacro %}

@@ -1,0 +1,67 @@
+/* ==========================================================================
+   Каса 2: пульсація позначених квитків
+   Одна спільна пульсація на всю сторінку: усі позначені квитки читають одне й те саме значення,
+   тому завжди синхронні, незалежно від того, коли їх позначили.
+   ========================================================================== */
+@property --issue-pulse {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+}
+:root { animation: issue-pulse 3s ease-in-out infinite; }
+@keyframes issue-pulse {
+    0%, 100% { --issue-pulse: 0; }
+    50% { --issue-pulse: 1; }
+}
+.issue-row-warning > td { background-color: rgb(245 158 11 / calc(var(--issue-pulse) * .2)); }
+.issue-row-danger > td { background-color: rgb(220 38 38 / calc(var(--issue-pulse) * .28)); }
+@media (prefers-reduced-motion: reduce) {
+    :root { animation: none; --issue-pulse: .6; }
+}
+
+/* Каса 2: таймер сеансу після закінчення часу — червоний тікер «+mm:ss».
+   Зупинений overtime (⏸️) — бурштиновий, щоб відрізнявся від живого. */
+body.ak-kasa2 .timer-overdue { color: #ff8a8a !important; }
+body.ak-kasa2 .timer-frozen { color: #fcd34d !important; }
+
+/* Каса 2: бейдж статусу «ВИКЛИКАЄТЬСЯ».
+   Тема akulamama.css перефарбовує класи Tailwind і для цього статусу дає світлий текст на світлому фоні,
+   тому задаємо власний колір: напівпрозора заливка + світлий текст — у тому ж стилі, що й «ЧЕКАЄ» та «ОБСЛУГОВУЄТЬСЯ». */
+body.ak-kasa2 .status-calling {
+    background-color: rgb(16 185 129 / .22) !important; /* emerald-500, ~22% */
+    color: #6ee7b7 !important;                          /* emerald-300 */
+}
+
+
+/* ==========================================================================
+   Табло черги
+   ========================================================================== */
+
+/* Кастомний скролбар для темної теми */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(31, 41, 55, 0.5); border-radius: 4px; } /* bg-gray-800 з прозорістю */
+::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.8); border-radius: 4px; } /* bg-gray-600 */
+::-webkit-scrollbar-thumb:hover { background: rgba(107, 114, 128, 1); } /* bg-gray-500 */
+
+/* Базові налаштування екрана (лише для табло: клас ak-display-root стоїть на <html> у display.html;
+   голий селектор `html` зачепив би і каса2, бо tempos.css підключено і там) */
+html.ak-display-root, body.ak-display { height: 100vh !important; max-height: 100vh !important; overflow: hidden !important; margin: 0; padding: 0; }
+body.ak-display { display: flex !important; flex-direction: column !important; box-sizing: border-box; }
+body.ak-display .ak-header { flex-shrink: 0; }
+body.ak-display .ak-footer { flex-shrink: 0; padding-top: 6px !important; padding-bottom: 6px !important; margin-top: 2px !important; }
+body.ak-display .ak-page { flex: 1 !important; display: flex !important; flex-direction: column !important; min-height: 0 !important; max-width: 100% !important; padding: 10px 24px !important; box-sizing: border-box; }
+
+/* Контейнер табло */
+.display-container { flex: 1 !important; display: flex !important; flex-direction: column !important; min-height: 0 !important; gap: 8px !important; }
+
+/* Звичайний режим: верхні блоки займають меншу частину (на 5 рядків), нижній — більшу */
+.top-sections-wrapper { flex: 1.6 !important; min-height: 0 !important; }
+.bottom-section-wrapper { flex: 1 !important; min-height: 0 !important; }
+
+/* Повноекранний режим (клас body.fullscreen-mode додає display.js): приховуємо шапку/підвал і розширюємо верхній блок на 7 рядків */
+body.fullscreen-mode { padding: 10px !important; }
+body.fullscreen-mode .ak-header,
+body.fullscreen-mode .ak-footer { display: none !important; }
+body.fullscreen-mode .ak-page { height: 100vh !important; padding: 8px !important; }
+body.fullscreen-mode .top-sections-wrapper { flex: 2.91 !important; }
+body.fullscreen-mode .bottom-section-wrapper { flex: 1 !important; }

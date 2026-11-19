@@ -14,26 +14,12 @@
 <body class="ak-site ak-inventory bg-gray-100 p-6">
 <header class="ak-header">
     <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
-    <nav class="ak-nav" aria-label="Головна навігація">
-    {% if is_admin %}
-        <a href="/staff">Персонал</a>
-        <a href="/kasa1">Реєстрація</a>
-        <a href="/kasa2">Видача</a>
-        <a href="/inventory">Залишки</a>
-        <a href="/docs">API</a>
-        <a href="/logout">Вихід</a>
-    {% else %}
-        <a href="/">Головна</a>
-        <a href="/inventory">Залишки</a>
-        <a href="/display">Табло</a>
-        <a href="/status">Мій талон</a>
-    {% endif %}
-</nav>
+    {% include "templates/nav.html" %}
 </header>
 <main class="ak-page">
-    <div class="max-w-4xl mx-auto" x-data="inventory({ isAdmin: {{ 'true' if is_admin else 'false' }} })" x-init="init()">
+    <div class="max-w-4xl mx-auto" x-data="inventory({ isAdmin: {{ 'true' if (is_admin or is_kasa2) else 'false' }} })" x-init="init()">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-800" x-text="isAdmin ? 'Керування залишками ковзанів (Адмін)' : 'Наявність ковзанів'"></h1>
+            <h1 class="text-2xl font-bold text-gray-800" x-text="isAdmin ? 'Керування залишками ковзанів' : 'Наявність ковзанів'"></h1>
             <div class="flex items-center space-x-4">
                 <div :title="wsStatus.title" class="inline-flex items-center justify-center py-1.5 cursor-help">
                     <span :class="wsStatus.class" class="w-3 h-3 rounded-full transition-colors inline-block"></span>
@@ -54,7 +40,8 @@
 
             <!-- Category Selector -->
             <select x-model="newCategory" class="px-3 py-2 border rounded text-sm bg-white text-gray-700">
-                <option value="figure">⛸️ Фігурні</option><option value="hockey">🏒 Хокейні</option>
+                <option value="figure">⛸️ Фігурні</option>
+                <option value="hockey">🏒 Хокейні</option>
             </select>
 
             <input type="number" x-model.number="newTotal" placeholder="Всього штук" min="1" class="px-3 py-2 border rounded text-sm w-full sm:w-28">

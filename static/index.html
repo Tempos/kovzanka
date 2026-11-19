@@ -10,25 +10,7 @@
 <body class="ak-site ak-home">
 <header class="ak-header">
     <a href="/" class="ak-logo" aria-label="Акула Мама — головна"><img src="/static/brand/logo.png" alt="Акула Мама"><span>Ковзанка</span></a>
-    <nav class="ak-nav" aria-label="Головна навігація">
-    <a href="/">Головна</a>
-    <a href="/inventory">Залишки</a>
-    <a href="/display">Табло</a>
-    <a href="/status">Мій талон</a>
-
-    <!-- Show only for Cashier 1 / General staff -->
-    <template x-if="!isAdmin">
-        <a href="/kasa1">Реєстрація (Каса 1)</a>
-    </template>
-
-    <!-- Show strictly for Cashier 2 / Admin -->
-    <template x-if="isAdmin">
-        <div class="inline-flex gap-4">
-            <a href="/kasa2" class="text-pink-400 font-bold">⚙️ Каса 2 (Видача)</a>
-            <a href="/staff" class="text-blue-400 font-bold">🛠️ Панель персоналу</a>
-        </div>
-    </template>
-</nav>
+    {% include "templates/nav.html" %}
 </header>
 <main class="ak-page">
     <section class="ak-hero" aria-labelledby="hero-title">
@@ -52,7 +34,8 @@
             <span class="ak-art-caption">Акула Мама · Час на лід</span></div>
     </section>
     <section aria-labelledby="nav-title">
-        <div class="ak-section-heading"><h2 id="nav-title">Усе для вашого сеансу</h2><span>Оберіть потрібний розділ</span></div>
+        <div class="ak-section-heading"><h2 id="nav-title">Усе для вашого сеансу</h2>
+            <span>Оберіть потрібний розділ</span></div>
         <div class="ak-cards"><a href="/status" class="ak-nav-card ak-feature">
             <div class="ak-card-top">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -61,7 +44,8 @@
                 </svg>
                 <span class="ak-card-number">01</span></div>
             <h3>Мій талон</h3>
-            <p>Перевіряйте свій номер і дізнавайтеся, коли ваша черга.</p><span class="ak-card-arrow" aria-hidden="true">↗</span></a><a
+            <p>Перевіряйте свій номер і дізнавайтеся, коли ваша черга.</p>
+            <span class="ak-card-arrow" aria-hidden="true">↗</span></a><a
                 href="/display" class="ak-nav-card ">
             <div class="ak-card-top">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -70,7 +54,8 @@
                 </svg>
                 <span class="ak-card-number">02</span></div>
             <h3>Табло для гостей</h3>
-            <p>Слідкуйте за чергою та запрошеннями на видачу ковзанів.</p><span class="ak-card-arrow" aria-hidden="true">↗</span></a><a
+            <p>Слідкуйте за чергою та запрошеннями на видачу ковзанів.</p>
+            <span class="ak-card-arrow" aria-hidden="true">↗</span></a><a
                 href="/inventory" class="ak-nav-card ">
             <div class="ak-card-top">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -79,17 +64,18 @@
                 </svg>
                 <span class="ak-card-number">03</span></div>
             <h3>Наявність ковзанів</h3>
-            <p>Переглядайте вільні розміри й орієнтовний час повернення.</p><span class="ak-card-arrow" aria-hidden="true">↗</span></a>
-<!--            <a href="/staff" class="ak-nav-card ">-->
-<!--            <div class="ak-card-top">-->
-<!--                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">-->
-<!--                    <rect x="4" y="10" width="16" height="12" rx="3"/>-->
-<!--                    <path d="M8 10V6a4 4 0 0 1 8 0v4m-4 5v3"/>-->
-<!--                </svg>-->
-<!--                <span class="ak-card-number">04</span>-->
-<!--            </div>-->
-<!--            <h3>Для працівників</h3>-->
-<!--            <p>Увійдіть за ПІН-кодом, щоб почати роботу з ковзанкою.</p><span class="ak-card-arrow" aria-hidden="true">↗</span></a>-->
+            <p>Переглядайте вільні розміри й орієнтовний час повернення.</p>
+            <span class="ak-card-arrow" aria-hidden="true">↗</span></a>
+            <!--            <a href="/staff" class="ak-nav-card ">-->
+            <!--            <div class="ak-card-top">-->
+            <!--                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">-->
+            <!--                    <rect x="4" y="10" width="16" height="12" rx="3"/>-->
+            <!--                    <path d="M8 10V6a4 4 0 0 1 8 0v4m-4 5v3"/>-->
+            <!--                </svg>-->
+            <!--                <span class="ak-card-number">04</span>-->
+            <!--            </div>-->
+            <!--            <h3>Для працівників</h3>-->
+            <!--            <p>Увійдіть за ПІН-кодом, щоб почати роботу з ковзанкою.</p><span class="ak-card-arrow" aria-hidden="true">↗</span></a>-->
         </div>
     </section>
 </main>
@@ -100,22 +86,34 @@
         <ul class="aside-social">
             <li>
                 <a href="https://www.facebook.com/profile.php?id=61577377145611" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 21v-8h2.7l.4-3H14V8c0-.9.3-1.5 1.6-1.5h1.7V3.8a20 20 0 0 0-2.4-.1c-2.5 0-4.2 1.5-4.2 4.3v2H8v3h2.7v8z"/></svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path fill="currentColor" d="M14 21v-8h2.7l.4-3H14V8c0-.9.3-1.5 1.6-1.5h1.7V3.8a20 20 0 0 0-2.4-.1c-2.5 0-4.2 1.5-4.2 4.3v2H8v3h2.7v8z"/>
+                    </svg>
                 </a>
             </li>
             <li>
                 <a href="https://www.instagram.com/akula__mama/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="3.5"/><circle cx="16.7" cy="7.3" r="1" fill="currentColor" stroke="none"/></svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="4" y="4" width="16" height="16" rx="5"/>
+                        <circle cx="12" cy="12" r="3.5"/>
+                        <circle cx="16.7" cy="7.3" r="1" fill="currentColor" stroke="none"/>
+                    </svg>
                 </a>
             </li>
             <li>
                 <a href="mailto:akulamamasheptytskyi@gmail.com" aria-label="Написати на електронну пошту">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="3" y="5" width="18" height="14" rx="2"/>
+                        <path d="m4 7 8 6 8-6"/>
+                    </svg>
                 </a>
             </li>
             <li>
                 <a href="tel:+380979690099" aria-label="Зателефонувати за номером +380 97 969 00 99">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 17h2"/></svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="7" y="3" width="10" height="18" rx="2"/>
+                        <path d="M11 17h2"/>
+                    </svg>
                 </a>
             </li>
         </ul>
