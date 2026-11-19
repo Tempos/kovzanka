@@ -9,25 +9,7 @@
     <script src="/static/js/shared.js"></script>
     <script src="/static/js/kasa2.js"></script>
     <link rel="stylesheet" href="/static/css/akulamama.css">
-    <style>
-        /* Одна спільна пульсація на всю сторінку: усі позначені квитки читають одне й те саме значення,
-           тому завжди синхронні, незалежно від того, коли їх позначили. */
-        @property --issue-pulse {
-            syntax: "<number>";
-            inherits: true;
-            initial-value: 0;
-        }
-        :root { animation: issue-pulse 3s ease-in-out infinite; }
-        @keyframes issue-pulse {
-            0%, 100% { --issue-pulse: 0; }
-            50% { --issue-pulse: 1; }
-        }
-        .issue-row-warning > td { background-color: rgb(245 158 11 / calc(var(--issue-pulse) * .2)); }
-        .issue-row-danger > td { background-color: rgb(220 38 38 / calc(var(--issue-pulse) * .28)); }
-        @media (prefers-reduced-motion: reduce) {
-            :root { animation: none; --issue-pulse: .6; }
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/tempos.css">
     <script defer src="/static/js/akulamama.js"></script>
 </head>
 <body class="ak-site ak-kasa2 bg-gray-100 min-h-screen p-8" x-data="kasa2App()">
@@ -89,25 +71,42 @@
             <table class="w-full divide-y divide-gray-200 border-collapse">
                 <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">№</th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Телефон</th>
+                    <th @click="sortBy('ticket_number')" class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100">
+                        № <span x-text="sortColumn === 'ticket_number' ? (sortAsc ? '▲' : '▼') : ''"></span>
+                    </th>
+                    <th @click="sortBy('phone')" class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100">
+                        Телефон <span x-text="sortColumn === 'phone' ? (sortAsc ? '▲' : '▼') : ''"></span>
+                    </th>
                     <th class="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Розміри</th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Час / Сеанс</th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                    <th @click="sortBy('session')" class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100">
+                        Час / Сеанс <span x-text="sortColumn === 'session' ? (sortAsc ? '▲' : '▼') : ''"></span>
+                    </th>
+                    <th @click="sortBy('status')" class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100">
+                        Статус <span x-text="sortColumn === 'status' ? (sortAsc ? '▲' : '▼') : ''"></span>
+                    </th>
                     <th class="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Дії</th>
                 </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                 <template :key="item.id" x-for="item in activeQueue">
-                    <tr class="transition-colors"
-                        :class="{
+                    <tr class="transition-colors" :class="{
                             'issue-row-warning': item.issue_status === 'warning',
                             'issue-row-danger': item.issue_status === 'danger',
                             'hover:bg-gray-50': !item.issue_status,
-                            'bg-red-50/20': isTicketBlocked(item) && !item.issue_status
-                        }">
+                            'bg-red-50/20': isTicketBlocked(item) && !item.issue_status}">
                         <!-- Комірка з номером замовлення -->
-                        <td class="px-4 py-3 font-bold text-lg"><span x-text="'#' + item.ticket_number"></span></td>
+                        <td class="px-4 py-3 font-bold text-lg">
+                            <span x-text="'#' + item.ticket_number"></span>
+                            <!-- Позначка проблеми: клік — поставити, повторний клік — зняти -->
+                            <div class="flex items-center gap-2 mt-1" role="group" aria-label="Позначка проблеми">
+                                <button type="button" @click="toggleIssue(item, 'warning')" :title="item.issue_status === 'warning' ? 'Зняти позначку «Увага»' : 'Позначити: потребує уваги'"
+                                        :aria-pressed="item.issue_status === 'warning'" :class="item.issue_status === 'warning' ? 'bg-amber-500 border-amber-600' : 'bg-amber-50 border-amber-300 hover:bg-amber-200'"
+                                        class="w-5 h-5 rounded-full border-2 transition"></button>
+                                <button type="button" @click="toggleIssue(item, 'danger')" :title="item.issue_status === 'danger' ? 'Зняти позначку «Проблема»' : 'Позначити: проблемне замовлення'"
+                                        :aria-pressed="item.issue_status === 'danger'" :class="item.issue_status === 'danger' ? 'bg-red-600 border-red-700' : 'bg-red-50 border-red-300 hover:bg-red-200'"
+                                        class="w-5 h-5 rounded-full border-2 transition"></button>
+                            </div>
+                        </td>
 
                         <td class="px-3 sm:px-4 py-3 align-middle">
                             <div class="font-mono font-bold text-slate-900 leading-tight whitespace-nowrap text-xs sm:text-sm" x-text="formatPhone(item.phone)"></div>
@@ -136,12 +135,13 @@
                         </td>
 
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-mono font-bold">
-                            <div class="flex flex-col gap-1" x-data="{ get phase() { return getSessionPhase(item) } }">
+                            <div class="flex flex-col gap-1" x-data="{ get phase() { return getSessionPhase(item) },
+                                              get overdue() { return (item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && !!item.session_end && isOverdue(item.session_end, item, now) } }">
                                 <!-- Phase 1: Calling (5 min arrival window) -->
                                 <template x-if="phase && phase.phase === 'CALLING'">
                                     <div class="flex flex-col">
                                         <span :class="phase.overdue ? 'text-red-600 animate-pulse' : 'text-amber-700'" x-text="phase.label + ': ' + (phase.overdue ? '+' : '') + phase.time"></span>
-                                        <span class="text-[11px] text-gray-500" x-text="'Сеанс: ' + item.duration_minutes + ' хв'"></span>
+                                        <span class="text-[11px] text-blue-600 mt-0.5" x-text="sessionSummary(item)"></span>
                                     </div>
                                 </template>
 
@@ -152,23 +152,18 @@
                                             <span class="px-2 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-200 text-xs" x-text="phase.label + ' ' + phase.time"></span>
                                             <button @click="skipLacing(item.id)" title="Почати основний час катання зараз" class="px-1.5 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold transition">⏭ Старт</button>
                                         </div>
-                                        <span class="text-[11px] text-blue-600 mt-0.5" x-text="item.duration_minutes + ' хв • до ' + formatTime(item.session_end)"></span>
+                                        <span class="text-[11px] text-blue-600 mt-0.5" x-text="sessionSummary(item)"></span>
                                     </div>
                                 </template>
 
                                 <!-- Phase 3: On Ice (or default fallback) -->
                                 <template x-if="!phase || phase.phase === 'SKATING'">
                                     <div class="flex flex-col">
-                                        <span :class="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && item.session_end ? 'text-blue-700' : 'text-gray-700'" x-text="getTimeDisplay(item)"></span>
+                                        <span :class="overdue ? (item.overtime_stopped_at ? 'timer-frozen' : 'timer-overdue') : ((item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && item.session_end ? 'text-blue-700' : 'text-gray-700')"
+                                              :title="overdue ? (item.overtime_stopped_at ? 'Overtime зупинено' : 'Час вийшов') : null"
+                                              x-text="(overdue && item.overtime_stopped_at ? '⏸️ ' : '') + getTimeDisplay(item)"></span>
                                         <template x-if="item.session_end">
-                                            <span class="text-xs text-blue-600" x-text="'до ' + formatTime(item.session_end)"></span>
-                                        </template>
-                                        <template x-if="(item.status === 'ОБСЛУГОВУЄТЬСЯ' || item.status === 'SERVED') && getOverdueTime(item.session_end, item, now)">
-                                            <span :title="item.overtime_stopped_at ? 'Overtime зупинено на ' + getOverdueTime(item.session_end, item, now) : 'Протерміновано на ' + getOverdueTime(item.session_end, item, now)"
-                                                  :class="item.overtime_stopped_at ? 'bg-slate-800 text-white border-slate-700' : 'bg-rose-100 text-rose-900 border-rose-200'"
-                                                  class="mt-1 inline-flex items-center w-max px-2.5 py-0.5 rounded-full text-xs font-bold border cursor-help shadow-sm">
-                                                <span x-text="item.overtime_stopped_at ? '⏸️ +' : '⏱️ +'"></span><span x-text="getOverdueTime(item.session_end, item, now)"></span>
-                                            </span>
+                                            <span class="text-[11px] text-blue-600 mt-0.5" x-text="sessionSummary(item)"></span>
                                         </template>
                                     </div>
                                 </template>
@@ -178,7 +173,7 @@
                         <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
                             <span :class="{
                                   'bg-yellow-100 text-yellow-900': item.status === 'ЧЕКАЄ',
-                                  'bg-emerald-100 text-emerald-900': item.status === 'ВИКЛИКАЄТЬСЯ',
+                                  'status-calling': item.status === 'ВИКЛИКАЄТЬСЯ',
                                   'bg-blue-100 text-blue-900': item.status === 'ОБСЛУГОВУЄТЬСЯ'
                               }"
                                   class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full" x-text="item.status">
@@ -189,13 +184,13 @@
                             <div class="inline-flex items-center justify-end gap-1.5 flex-wrap">
                                 <template x-if="item.status === 'ЧЕКАЄ'">
                                     <button @click="changeStatus(item.id, 'ВИКЛИКАЄТЬСЯ')" :disabled="isTicketBlocked(item)" :title="isTicketBlocked(item) ? 'Недостатньо вільних розмірів у наявності' : 'Викликати клієнта'"
-                                            class="px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed">
+                                            class="px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition bg-emerald-700 hover:bg-emerald-800 text-white disabled:bg-slate-200 disabled:text-slate-600 disabled:border disabled:border-slate-300 disabled:cursor-not-allowed">
                                         Викликати
                                     </button>
                                 </template>
                                 <template x-if="item.status === 'ВИКЛИКАЄТЬСЯ'">
                                     <button @click="changeStatus(item.id, 'ОБСЛУГОВУЄТЬСЯ')" :disabled="isTicketBlocked(item)" :title="isTicketBlocked(item) ? 'Недостатньо вільних розмірів у наявності' : 'Видати ковзани'"
-                                            class="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition">
+                                            class="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-600 disabled:border disabled:border-slate-300 disabled:cursor-not-allowed text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition">
                                         Видати ковзани
                                     </button>
                                 </template>
@@ -211,21 +206,6 @@
                                 <template x-if="item.status !== 'ЧЕКАЄ'">
                                     <button @click="revertStatus(item.id)" class="bg-gray-600 hover:bg-gray-700 text-white px-2.5 sm:px-3 py-1 rounded text-xs font-bold transition" title="Відкотити попередню дію">↩️</button>
                                 </template>
-                                <!-- Швидка позначка: клік — поставити, повторний клік — зняти -->
-                                <div class="inline-flex rounded overflow-hidden border border-slate-300" role="group" aria-label="Позначка проблеми">
-                                    <button type="button" @click="toggleIssue(item, 'warning')"
-                                            :title="item.issue_status === 'warning' ? 'Зняти позначку «Увага»' : 'Позначити: потребує уваги'"
-                                            :aria-pressed="item.issue_status === 'warning'"
-                                            :class="item.issue_status === 'warning' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-amber-100'"
-                                            class="px-2 py-1 text-xs transition">🟡
-                                    </button>
-                                    <button type="button" @click="toggleIssue(item, 'danger')"
-                                            :title="item.issue_status === 'danger' ? 'Зняти позначку «Проблема»' : 'Позначити: проблемне замовлення'"
-                                            :aria-pressed="item.issue_status === 'danger'"
-                                            :class="item.issue_status === 'danger' ? 'bg-red-600 text-white' : 'bg-white text-slate-500 hover:bg-red-100'"
-                                            class="px-2 py-1 text-xs border-l border-slate-300 transition">🔴
-                                    </button>
-                                </div>
                                 <button @click="openCancelModal(item)" class="bg-gray-200 hover:bg-red-600 hover:text-white text-gray-700 px-2 py-1 rounded text-xs transition" title="Скасувати">✕</button>
                                 <button @click="openEditModal(item)" class="bg-blue-800 hover:bg-blue-900 text-white px-2 py-1 rounded text-xs transition" title="Редагувати розміри / час / проблеми">✏️</button>
                             </div>
@@ -234,7 +214,9 @@
                 </template>
                 </tbody>
             </table>
-            <template x-if="activeQueue.length === 0"><div class="text-center py-8 text-gray-500">Активних квитків у черзі немає</div></template>
+            <template x-if="activeQueue.length === 0">
+                <div class="text-center py-8 text-gray-500">Активних квитків у черзі немає</div>
+            </template>
 
             <!-- 2. Bottom Recently Closed Table (Shared inside the exact same scroll container) -->
             <template x-if="closedQueue.length > 0">
@@ -287,13 +269,13 @@
     <!-- Inventory Modal Popup -->
     {% include "templates/inventory_modal.html" %}
 
-    <!-- МОДАЛЬНЕ ВІКНО РЕДАГУВАННЯ КВИТКА -->
+    <!-- Ticket edit Modal Popup -->
     {% include "templates/edit_ticket_modal.html" %}
 
-    <!-- МОДАЛЬНЕ ВІКНО СКАСУВАННЯ З ОБОВ'ЯЗКОВИМ КОМЕНТАРЕМ -->
+    <!-- Cancel with comment Modal Popup -->
     {% include "templates/cancel_ticket_modal.html" %}
 
-    <!-- МОДАЛЬНЕ ВІКНО ТЕХНІЧНОЇ ПЕРЕРВИ / МАСОВОГО ДОДАВАННЯ ЧАСУ -->
+    <!-- Technical break Modal Popup -->
     {% include "templates/tech_break_modal.html" %}
 </main>
 <footer class="ak-footer">

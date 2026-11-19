@@ -40,7 +40,7 @@ def get_full_queue(db: DBSession):
             QueueStatus.CALLING,
             QueueStatus.SERVED
         ]))
-        .order_by(QueueItem.created_at.asc())
+        .order_by(QueueItem.ticket_number.asc())  # стабільний порядок: статус квитка не впливає на позицію
         .all()
     )
 

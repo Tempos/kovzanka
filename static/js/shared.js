@@ -157,7 +157,7 @@ function getSessionPhase(item, nowMs = Date.now()) {
         if (item.session_start && effectiveNow < lacingEndMs) {
             return {
                 phase: "LACING",
-                label: isFrozen ? "⏸️ Перевзування (пауза)" : "👟 Перевзування",
+                label: isFrozen ? "⏸️ Перевзування" : "👟 Перевзування",
                 time: formatMs(lacingEndMs - effectiveNow),
                 overdue: false,
                 frozen: isFrozen

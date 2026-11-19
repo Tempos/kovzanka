@@ -9,29 +9,8 @@
     <script src="/static/js/shared.js"></script>
     <script src="/static/js/display.js"></script>
     <link rel="stylesheet" href="/static/css/akulamama.css">
+    <link rel="stylesheet" href="/static/css/tempos.css">
     <script defer src="/static/js/akulamama.js"></script>
-    <style>
-        /* Базові налаштування екрана */
-        html, body.ak-display { height: 100vh !important; max-height: 100vh !important; overflow: hidden !important; margin: 0; padding: 0; }
-        body.ak-display { display: flex !important; flex-direction: column !important; box-sizing: border-box; }
-        body.ak-display .ak-header { flex-shrink: 0; }
-        body.ak-display .ak-footer { flex-shrink: 0; padding-top: 6px !important; padding-bottom: 6px !important; margin-top: 2px !important; }
-        body.ak-display .ak-page { flex: 1 !important; display: flex !important; flex-direction: column !important; min-height: 0 !important; max-width: 100% !important; padding: 10px 24px !important; box-sizing: border-box; }
-
-        /* Контейнер табло */
-        .display-container { flex: 1 !important; display: flex !important; flex-direction: column !important; min-height: 0 !important; gap: 8px !important; }
-
-        /* Звичайний режим: верхні блоки займають меншу частину (на 5 рядків), нижній — більшу */
-        .top-sections-wrapper { flex: 1.6 !important; min-height: 0 !important; }
-        .bottom-section-wrapper { flex: 1 !important; min-height: 0 !important; }
-
-        /* Повноекранний режим: приховуємо шапку/підвал і розширюємо верхній блок на 7 рядків */
-        body.fullscreen-mode .ak-header,
-        body.fullscreen-mode .ak-footer { display: none !important; }
-        body.fullscreen-mode .ak-page { height: 100vh !important; padding: 8px !important; }
-        body.fullscreen-mode .top-sections-wrapper { flex: 2.91 !important; }
-        body.fullscreen-mode .bottom-section-wrapper { flex: 1 !important; }
-    </style>
 </head>
 <body class="ak-site ak-display font-sans" x-data="displayApp()">
 <header class="ak-header !max-w-none w-full">
@@ -47,15 +26,15 @@
         <!-- Панель кнопок праворуч (між шапкою та блоками черги) -->
         <div class="flex items-center justify-end space-x-3 mb-1.5 shrink-0">
             <!-- Toggle Hide In Ice Button -->
-            <button @click="hideOnIce = !hideOnIce" class="bg-transparent hover:bg-white/10 text-gray-300 hover:text-white px-2.5 py-1.5 rounded-lg border border-gray-700/60 text-xs font-mono transition flex items-center space-x-1.5" :title="hideOnIce ? 'Показати блок На льоду' : 'Сховати блок На льоду'">
-                <span x-text="hideOnIce ? '🧊 Показати льод' : '🧊 Сховати льод'"></span>
+            <button @click="hideOnIce = !hideOnIce" class="bg-transparent hover:bg-white/10 text-gray-300 hover:text-white px-2.5 py-1.5 rounded-lg border border-gray-700/60 text-xs font-mono transition flex items-center space-x-1.5"
+                    :title="hideOnIce ? 'Показати блок На льоду' : 'Сховати блок На льоду'">
+                <span x-text="hideOnIce ? '🧊' : '🧊'"></span>
             </button>
-
             <!-- Fullscreen Toggle Button -->
-            <button @click="toggleFullScreen()" class="bg-transparent hover:bg-white/10 text-gray-300 hover:text-white p-2 rounded-lg border border-gray-700/60 text-sm font-mono transition flex items-center justify-center" :title="isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'">
+            <button @click="toggleFullScreen()" class="bg-transparent hover:bg-white/10 text-gray-300 hover:text-white p-2 rounded-lg border border-gray-700/60 text-sm font-mono transition flex items-center justify-center"
+                    :title="isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'">
                 <span class="text-base leading-none" x-text="isFullscreen ? '🗗' : '🗖'"></span>
             </button>
-
             <!-- WebSocket Status Badge -->
             <div :title="wsStatus.title" class="inline-flex items-center justify-center py-1 cursor-help shrink-0">
                 <span :class="wsStatus.class" class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-colors inline-block"></span>

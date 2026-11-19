@@ -8,6 +8,10 @@ function kasa2App() {
         searchQuery: "",
         fetchTimer: null,
 
+        // --- SORTING (за замовчуванням — за номером талона, щоб рядки не стрибали при зміні статусу) ---
+        sortColumn: "ticket_number",
+        sortAsc: true,
+
         // --- MODALS (EDIT & CANCEL) ---
         editModal: {
             open: false,
@@ -46,7 +50,39 @@ function kasa2App() {
             return null
         },
         toggleIssueFilter(value) {this.searchQuery = this.searchQuery.trim() === value ? "" : value},
-        get activeQueue() {
+        sortBy(column) {
+            if (this.sortColumn === column) {
+                this.sortAsc = !this.sortAsc
+            } else {
+                this.sortColumn = column
+                this.sortAsc = true
+            }
+        },
+        sortItems(items) {
+            const statusOrder = {"ЧЕКАЄ": 0, "WAITING": 0, "ВИКЛИКАЄТЬСЯ": 1, "CALLING": 1, "ОБСЛУГОВУЄТЬСЯ": 2, "SERVED": 2}
+            const keyOf = (item) => {
+                switch (this.sortColumn) {
+                    case "phone": return item.phone ? String(item.phone).replace(/\D/g, "") : null
+                    case "session": return item.session_end ? (parseServerDate(item.session_end)?.getTime() ?? null) : null
+                    case "status": return statusOrder[item.status] ?? 99
+                    default: return item.ticket_number
+                }
+            }
+            const dir = this.sortAsc ? 1 : -1
+            return [...items].sort((a, b) => {
+                const ka = keyOf(a), kb = keyOf(b)
+                // порожні значення (немає телефону / сеанс ще не розпочато) завжди внизу
+                if (ka === null && kb !== null) return 1
+                if (kb === null && ka !== null) return -1
+                if (ka !== kb && ka !== null) {
+                    const cmp = typeof ka === "string" ? ka.localeCompare(kb, undefined, {numeric: true}) : ka - kb
+                    if (cmp !== 0) return cmp * dir
+                }
+                return a.ticket_number - b.ticket_number // однакові значення — завжди за номером
+            })
+        },
+        get activeQueue() {return this.sortItems(this.filteredActiveQueue)},
+        get filteredActiveQueue() {
             let items = this.queue.filter(i =>
                 ["ЧЕКАЄ", "ВИКЛИКАЄТЬСЯ", "ОБСЛУГОВУЄТЬСЯ", "WAITING", "CALLING", "SERVED"].includes(i.status)
             )
@@ -297,6 +333,12 @@ function kasa2App() {
                 console.error("Помилка зупинки таймера:", e)
                 await this.fetchQueue()
             }
+        },
+
+        // Єдиний формат підпису сеансу: "90 хв • до 13:13" (або просто "90 хв", поки час закінчення невідомий)
+        sessionSummary(item) {
+            const duration = item.duration_minutes ? item.duration_minutes + " хв" : "—"
+            return item.session_end ? `${duration} • до ${formatTime(item.session_end)}` : duration
         },
 
         getTimeDisplay(item) {
