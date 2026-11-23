@@ -39,12 +39,9 @@ body.ak-kasa2 .status-calling {
 
 /* Кастомний скролбар для темної теми */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: rgba(31, 41, 55, 0.5); border-radius: 4px; }
-/* bg-gray-800 з прозорістю */
-::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.8); border-radius: 4px; }
-/* bg-gray-600 */
-::-webkit-scrollbar-thumb:hover { background: rgba(107, 114, 128, 1); }
-/* bg-gray-500 */
+::-webkit-scrollbar-track { background: rgba(31, 41, 55, 0.5); border-radius: 4px; } /* bg-gray-800 з прозорістю */
+::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.8); border-radius: 4px; } /* bg-gray-600 */
+::-webkit-scrollbar-thumb:hover { background: rgba(107, 114, 128, 1); } /* bg-gray-500 */
 
 /* Базові налаштування екрана (лише для табло: клас ak-display-root стоїть на <html> у display.html;
    голий селектор `html` зачепив би і каса2, бо tempos.css підключено і там) */

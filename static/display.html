@@ -49,13 +49,11 @@
                     :title="hideOnIce ? 'Показати блок На льоду' : 'Сховати блок На льоду'">
                 <span>🧊</span>
             </button>
-
             <!-- Fullscreen Toggle Button -->
             <button @click="toggleFullScreen()" class="ak-fs-btn bg-transparent hover:bg-white/10 text-gray-300 hover:text-white p-1.5 sm:p-2 rounded-lg border border-gray-700/60 text-sm font-mono transition flex items-center justify-center"
                     :title="isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'">
                 <span class="text-sm sm:text-base leading-none" x-text="isFullscreen ? '🗗' : '🗖'"></span>
             </button>
-
             <!-- WebSocket Status Badge -->
             <div :title="wsStatus.title" class="inline-flex items-center justify-center py-1 cursor-help shrink-0">
                 <span :class="wsStatus.class" class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-colors inline-block"></span>
