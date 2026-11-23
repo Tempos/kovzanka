@@ -183,7 +183,7 @@ body.fullscreen-mode .bottom-section-wrapper { flex: 1 !important; }
 
 /* ==========================================================================
    Табло на телефоні — ландшафт (короткий екран по висоті, навіть якщо ширина >= 768px):
-   та сама шапка з усіма 3 кнопками приховування, 6 колонок плиток, без чіпання десктопу.
+   усі видимі блоки йдуть один під одним (зверху вниз), 6 колонок плиток.
    ========================================================================== */
 @media (orientation: landscape) and (max-height: 520px) {
     .ak-phone-only { display: inline-flex !important; }
@@ -212,7 +212,7 @@ body.fullscreen-mode .bottom-section-wrapper { flex: 1 !important; }
 
     .ak-fs-btn { display: none !important; }
 
-    /* Та сама закріплена панель кнопок зверху під час прокрутки */
+    /* Закріплена панель кнопок зверху під час прокрутки */
     .ak-display-toolbar {
         position: sticky !important;
         top: 0 !important;
@@ -225,14 +225,69 @@ body.fullscreen-mode .bottom-section-wrapper { flex: 1 !important; }
         border-bottom: 1px solid rgba(170, 222, 229, 0.16);
     }
 
-    /* Усі три блоки йдуть один під одним і підлаштовуються під кількість квитків */
-    .top-sections-wrapper { display: contents !important; }
-    .display-container {
+    /* Строгий вертикальний стек; не чіпаємо display на блоках з x-show */
+    body.ak-display .display-container,
+    body.ak-display .display-container.ak-calling-and-ice,
+    body.ak-display .display-container.ak-only-calling,
+    body.ak-display .display-container.ak-only-waiting,
+    body.ak-display .display-container.ak-only-ice,
+    body.ak-display .display-container.ak-no-top {
         display: flex !important;
         flex-direction: column !important;
+        align-items: stretch !important;
+        flex: 0 0 auto !important;
+        height: auto !important;
+        max-height: none !important;
         gap: 6px !important;
         min-width: 0 !important;
         width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    body.ak-display .display-container .top-sections-wrapper,
+    body.ak-display .display-container.ak-calling-and-ice .top-sections-wrapper,
+    body.ak-display .display-container.ak-only-calling .top-sections-wrapper,
+    body.ak-display .display-container.ak-only-waiting .top-sections-wrapper,
+    body.ak-display .display-container.ak-only-ice .top-sections-wrapper,
+    body.ak-display .display-container.ak-no-top .top-sections-wrapper,
+    body.ak-display .display-container.ak-no-bottom:not(.ak-only-calling):not(.ak-only-waiting) .top-sections-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        flex: 0 0 auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        gap: 6px !important;
+        min-width: 0 !important;
+    }
+
+    body.ak-display .display-container .top-sections-wrapper > div,
+    body.ak-display .display-container.ak-calling-and-ice .top-sections-wrapper > div,
+    body.ak-display .display-container.ak-only-calling .top-sections-wrapper > div,
+    body.ak-display .display-container.ak-only-waiting .top-sections-wrapper > div,
+    body.ak-display .display-container.ak-no-top .top-sections-wrapper > div,
+    body.ak-display .display-container.ak-no-bottom:not(.ak-only-calling):not(.ak-only-waiting) .top-sections-wrapper > div {
+        grid-column: auto !important;
+        flex: 0 0 auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-width: 0 !important;
+    }
+
+    body.ak-display .display-container .bottom-section-wrapper,
+    body.ak-display .display-container.ak-calling-and-ice .bottom-section-wrapper,
+    body.ak-display .display-container.ak-only-ice .bottom-section-wrapper,
+    body.ak-display .display-container.ak-no-top .bottom-section-wrapper {
+        flex: 0 0 auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        min-width: 0 !important;
+        overflow: visible !important;
     }
 
     body.ak-display .ak-page [class~="bg-gray-800/80"] {
@@ -241,6 +296,7 @@ body.fullscreen-mode .bottom-section-wrapper { flex: 1 !important; }
         flex: 0 0 auto !important;
         padding: 6px 8px !important;
         box-sizing: border-box !important;
+        width: 100% !important;
         max-width: 100% !important;
     }
 
