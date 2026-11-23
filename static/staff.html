@@ -162,7 +162,7 @@
                         <button @click="currentEdit = {id: '{{ user.id }}', username: '{{ user.username }}', role: '{{ user.role }}'}; editModal = true" class="text-cyan-300 hover:text-white font-bold text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition border border-[#274452]">
                             Редагувати
                         </button>
-                        <form action="/admin/users/{{ user.id }}/delete" method="POST" class="inline" onsubmit="return confirm('Видалити цього користувача?');">
+                        <form action="/users/{{ user.id }}/delete" method="POST" class="inline" onsubmit="return confirm('Видалити цього користувача?');">
                             <button type="submit" class="text-red-300 hover:text-red-100 font-bold text-xs px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 rounded-lg transition border border-red-900/50">
                                 Видалити
                             </button>
@@ -191,7 +191,7 @@
             <h3 class="text-lg font-bold text-white">Додати нового користувача</h3>
             <button @click="showCreateModal = false" class="text-slate-400 hover:text-white text-2xl font-bold">×</button>
         </div>
-        <form action="/admin/users/create" method="POST" class="space-y-4">
+        <form action="/users/create" method="POST" class="space-y-4">
             <div>
                 <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Логін</label>
                 <input type="text" name="username" required class="w-full bg-[#11222b] border border-[#274452] rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-cyan-500">
@@ -223,7 +223,7 @@
             <h3 class="text-lg font-bold text-white">Редагувати користувача</h3>
             <button @click="editModal = false" class="text-slate-400 hover:text-white text-2xl font-bold">×</button>
         </div>
-        <form :action="`/admin/users/${currentEdit.id}/edit`" method="POST" class="space-y-4">
+        <form :action="`/users/${currentEdit.id}/edit`" method="POST" class="space-y-4">
             <div>
                 <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Логін</label>
                 <input type="text" name="username" x-model="currentEdit.username" required class="w-full bg-[#11222b] border border-[#274452] rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-cyan-500">
