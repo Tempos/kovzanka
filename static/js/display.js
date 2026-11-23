@@ -6,6 +6,8 @@ function displayApp() {
         // --- STATE AND VARIABLES ---
         isFullscreen: false,
         now: Date.now(),
+        hideCalling: false,
+        hideWaiting: false,
         hideOnIce: false,
 
         // --- COMPUTED PROPERTIES ---
