@@ -26,9 +26,18 @@ import os
 
 def ensure_columns():
     inspector = inspect(engine)
-    columns = [col["name"] for col in inspector.get_columns("queue")]
+    queue_columns = inspector.get_columns("queue")
+    columns = [col["name"] for col in queue_columns]
 
     with engine.begin() as conn:
+        # Queue registration supports guests without a phone number. Existing
+        # MySQL installations may still have the original NOT NULL definition
+        # because SQLAlchemy create_all() does not alter existing columns.
+        phone_column = next((col for col in queue_columns if col["name"] == "phone"), None)
+        if phone_column and not phone_column["nullable"] and engine.dialect.name == "mysql":
+            conn.execute(text("ALTER TABLE queue MODIFY COLUMN phone TEXT NULL;"))
+            print("[DB MIGRATION] Колонка phone у таблиці queue тепер допускає NULL.")
+
         if "issue_status" not in columns:
             conn.execute(text("ALTER TABLE queue ADD COLUMN issue_status VARCHAR(64) DEFAULT NULL;"))
             print("[DB MIGRATION] Додано колонку issue_status до таблиці queue.")
