@@ -22,16 +22,37 @@
 <main class="ak-page !max-w-none w-full">
     <div class="w-full h-full flex flex-col flex-1 min-h-0">
         <!-- Панель кнопок праворуч (між шапкою та блоками черги) -->
-        <div class="flex items-center justify-end space-x-3 mb-1.5 shrink-0">
+        <div class="ak-display-toolbar relative flex items-center justify-end space-x-1.5 sm:space-x-3 mb-1 shrink-0">
+            <!-- Заголовок для телефона (шапка там прихована) -->
+            <span class="ak-phone-only mr-auto text-xs font-black uppercase tracking-wider text-blue-400 truncate">Електронна черга</span>
+
+            <!-- Hide Calling Button -->
+            <button @click="hideCalling = !hideCalling"
+                    :class="hideCalling ? 'bg-green-500/20 border-green-400/60 text-green-300' : 'bg-transparent text-gray-300 hover:text-white border-gray-700/60'"
+                    class="hover:bg-white/10 px-2 py-1 rounded-lg border text-xs font-mono transition flex items-center justify-center"
+                    :title="hideCalling ? 'Показати блок Запрошуються' : 'Сховати блок Запрошуються'">
+                <span>📣</span>
+            </button>
+
+            <!-- Hide Waiting Button -->
+            <button @click="hideWaiting = !hideWaiting"
+                    :class="hideWaiting ? 'bg-yellow-500/20 border-yellow-400/60 text-yellow-300' : 'bg-transparent text-gray-300 hover:text-white border-gray-700/60'"
+                    class="hover:bg-white/10 px-2 py-1 rounded-lg border text-xs font-mono transition flex items-center justify-center"
+                    :title="hideWaiting ? 'Показати блок Готуються' : 'Сховати блок Готуються'">
+                <span>⏳</span>
+            </button>
+
             <!-- Toggle Hide In Ice Button -->
-            <button @click="hideOnIce = !hideOnIce" class="bg-transparent hover:bg-white/10 text-gray-300 hover:text-white px-2.5 py-1.5 rounded-lg border border-gray-700/60 text-xs font-mono transition flex items-center space-x-1.5"
+            <button @click="hideOnIce = !hideOnIce"
+                    :class="hideOnIce ? 'bg-blue-500/20 border-blue-400/60 text-blue-300' : 'bg-transparent text-gray-300 hover:text-white border-gray-700/60'"
+                    class="hover:bg-white/10 px-2 py-1 rounded-lg border text-xs font-mono transition flex items-center justify-center"
                     :title="hideOnIce ? 'Показати блок На льоду' : 'Сховати блок На льоду'">
-                <span x-text="hideOnIce ? '🧊' : '🧊'"></span>
+                <span>🧊</span>
             </button>
             <!-- Fullscreen Toggle Button -->
-            <button @click="toggleFullScreen()" class="bg-transparent hover:bg-white/10 text-gray-300 hover:text-white p-2 rounded-lg border border-gray-700/60 text-sm font-mono transition flex items-center justify-center"
+            <button @click="toggleFullScreen()" class="ak-fs-btn bg-transparent hover:bg-white/10 text-gray-300 hover:text-white p-1.5 sm:p-2 rounded-lg border border-gray-700/60 text-sm font-mono transition flex items-center justify-center"
                     :title="isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'">
-                <span class="text-base leading-none" x-text="isFullscreen ? '🗗' : '🗖'"></span>
+                <span class="text-sm sm:text-base leading-none" x-text="isFullscreen ? '🗗' : '🗖'"></span>
             </button>
             <!-- WebSocket Status Badge -->
             <div :title="wsStatus.title" class="inline-flex items-center justify-center py-1 cursor-help shrink-0">
@@ -40,28 +61,38 @@
             </div>
         </div>
 
-        <div class="display-container">
+        <div class="display-container"
+             :class="{
+                 'ak-no-top': hideCalling && hideWaiting,
+                 'ak-no-bottom': hideOnIce,
+                 'ak-only-calling': !hideCalling && hideWaiting && hideOnIce,
+                 'ak-only-waiting': hideCalling && !hideWaiting && hideOnIce,
+                 'ak-only-ice': hideCalling && hideWaiting && !hideOnIce,
+                 'ak-calling-and-ice': !hideCalling && hideWaiting && !hideOnIce
+             }">
             <!-- TOP BLOCKS CONTAINER -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 top-sections-wrapper min-h-0">
                 <!-- INVITATIONS -->
-                <div class="bg-gray-800/80 rounded-2xl p-3.5 border border-green-500/30 shadow-xl flex flex-col min-h-0 h-full md:col-span-1">
+                <div x-show="!hideCalling"
+                     class="bg-gray-800/80 rounded-2xl p-3.5 border border-green-500/30 shadow-xl flex flex-col min-h-0 h-full md:col-span-1"
+                     :class="callingItems.length === 0 ? 'ak-block-empty' : ''">
                     <h2 class="text-sm sm:text-base font-bold text-green-400 mb-2 flex items-center uppercase tracking-wide shrink-0">
                         <span class="inline-block w-2.5 h-2.5 bg-green-500 rounded-full mr-2 animate-ping"></span>Запрошуються
                     </h2>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 overflow-y-auto pr-1 flex-1 min-h-0 content-start">
+                    <div class="ak-tiles grid grid-cols-2 sm:grid-cols-3 gap-2 overflow-y-auto pr-1 flex-1 min-h-0 content-start">
                         <template :key="item.id" x-for="item in callingItems">
                             <div class="bg-green-950/80 border-2 border-green-500 rounded-lg p-1.5 text-center flex flex-col justify-center gap-0.5 h-[95px] shrink-0"
                                  x-data="{ get phase() { return getSessionPhase(item, now) } }">
-                                <span class="text-xl sm:text-2xl font-extrabold text-green-300 font-mono block leading-none tracking-tight" x-text="'#' + item.ticket_number"></span>
+                                <span class="tile-num text-xl sm:text-2xl font-extrabold text-green-300 font-mono block leading-none tracking-tight" x-text="'#' + item.ticket_number"></span>
                                 <template x-if="phase">
-                                    <div class="text-[11px] sm:text-xs font-mono font-bold leading-tight truncate"
+                                    <div class="tile-line text-[11px] sm:text-xs font-mono font-bold leading-tight truncate"
                                          :class="phase.overdue ? 'text-red-400 animate-pulse' : 'text-amber-300'"
                                          x-text="(phase.overdue ? 'Запізнення: +' : 'Явка: ') + phase.time"></div>
                                 </template>
                                 <template x-if="!phase">
-                                    <div class="text-[11px] sm:text-xs text-gray-300 font-mono font-semibold leading-tight truncate" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                                    <div class="tile-line text-[11px] sm:text-xs text-gray-300 font-mono font-semibold leading-tight truncate" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
                                 </template>
-                                <div class="text-[10px] sm:text-[11px] text-gray-100 font-mono font-semibold leading-tight line-clamp-2 break-words" :title="formatSizesSummary(item.shoe_sizes, 500)" x-text="formatSizesSummary(item.shoe_sizes)"></div>
+                                <div class="tile-sizes text-[10px] sm:text-[11px] text-gray-100 font-mono font-semibold leading-tight line-clamp-2 break-words" :title="formatSizesSummary(item.shoe_sizes, 500)" x-text="formatSizesSummary(item.shoe_sizes)"></div>
                             </div>
                         </template>
                     </div>
@@ -71,14 +102,19 @@
                 </div>
 
                 <!-- QUEUED -->
-                <div class="bg-gray-800/80 rounded-2xl p-3.5 border border-gray-700 shadow-xl flex flex-col min-h-0 h-full md:col-span-2">
+                <div x-show="!hideWaiting"
+                     class="bg-gray-800/80 rounded-2xl p-3.5 border border-gray-700 shadow-xl flex flex-col min-h-0 h-full"
+                     :class="[
+                         waitingItems.length === 0 ? 'ak-block-empty' : '',
+                         hideCalling ? 'md:col-span-3' : 'md:col-span-2'
+                     ]">
                     <h2 class="text-sm sm:text-base font-bold text-yellow-400 mb-2 uppercase tracking-wide shrink-0">Готуються (Очікують)</h2>
-                    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 overflow-y-auto pr-1 flex-1 min-h-0 content-start">
+                    <div class="ak-tiles grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 overflow-y-auto pr-1 flex-1 min-h-0 content-start">
                         <template :key="item.id" x-for="item in waitingItems">
                             <div class="bg-gray-900 border border-gray-700 rounded-lg p-1.5 text-center flex flex-col justify-center gap-0.5 h-[95px] shrink-0">
-                                <span class="text-xl sm:text-2xl font-extrabold text-yellow-300 font-mono block leading-none tracking-tight" x-text="'#' + item.ticket_number"></span>
-                                <div class="text-[11px] sm:text-xs text-gray-300 font-mono font-semibold leading-tight truncate" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
-                                <div class="text-[10px] sm:text-[11px] text-gray-100 font-mono font-semibold leading-tight line-clamp-2 break-words" :title="formatSizesSummary(item.shoe_sizes, 500)"
+                                <span class="tile-num text-xl sm:text-2xl font-extrabold text-yellow-300 font-mono block leading-none tracking-tight" x-text="'#' + item.ticket_number"></span>
+                                <div class="tile-line text-[11px] sm:text-xs text-gray-300 font-mono font-semibold leading-tight truncate" x-text="'Час: ' + item.duration_minutes + ' хв'"></div>
+                                <div class="tile-sizes text-[10px] sm:text-[11px] text-gray-100 font-mono font-semibold leading-tight line-clamp-2 break-words" :title="formatSizesSummary(item.shoe_sizes, 500)"
                                      x-text="typeof formatSizesSummary === 'function'
                                  ? formatSizesSummary(item.shoe_sizes) : (Array.isArray(item.shoe_sizes)
                                  ? item.shoe_sizes.join(', ') : (item.shoe_sizes || '—'))">
@@ -93,30 +129,30 @@
             </div>
 
             <!-- ON ICE (SERVED) -->
-            <div x-show="!hideOnIce" class="bg-gray-800/80 rounded-2xl p-3 border border-blue-500/30 shadow-xl w-full flex flex-col min-h-0 bottom-section-wrapper h-full">
+            <div x-show="!hideOnIce" class="bg-gray-800/80 rounded-2xl p-3 border border-blue-500/30 shadow-xl w-full flex flex-col min-h-0 bottom-section-wrapper h-full" :class="servedItems.length === 0 ? 'ak-block-empty' : ''">
                 <h2 class="text-sm sm:text-base font-bold text-blue-400 mb-2 uppercase tracking-wide flex items-center shrink-0">
                     <span class="inline-block w-2 h-2 bg-blue-500 rounded-full mr-2"></span>На льоду (Обслуговуються)
                 </h2>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-1.5 overflow-y-auto pr-1 flex-1 min-h-0 content-start">
+                <div class="ak-tiles grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-1.5 overflow-y-auto pr-1 flex-1 min-h-0 content-start">
                     <template :key="item.id" x-for="item in servedItems">
                         <div class="border rounded-lg p-1.5 text-center flex flex-col justify-center gap-0.5 transition h-[94px] shrink-0" x-data="{ get phase() { return getSessionPhase(item, now) } }" :class="isOverdue(item.session_end) ? 'bg-red-950/80 border-red-500 animate-pulse' : (phase?.phase === 'LACING' ? 'bg-teal-950/80 border-teal-500/60' : 'bg-blue-950/80 border-blue-500/50')">
-                            <span class="text-xl sm:text-2xl font-extrabold font-mono block leading-none tracking-tight" x-text="'#' + item.ticket_number" :class="isOverdue(item.session_end) ? 'text-red-300' : (phase?.phase === 'LACING' ? 'text-teal-300' : 'text-blue-300')"></span>
-                            <div class="text-[10px] sm:text-[11px] text-gray-100 font-mono font-semibold leading-tight line-clamp-1 break-words" :title="formatSizesSummary(item.shoe_sizes, 500)" x-text="formatSizesSummary(item.shoe_sizes)"></div>
+                            <span class="tile-num text-xl sm:text-2xl font-extrabold font-mono block leading-none tracking-tight" x-text="'#' + item.ticket_number" :class="isOverdue(item.session_end) ? 'text-red-300' : (phase?.phase === 'LACING' ? 'text-teal-300' : 'text-blue-300')"></span>
+                            <div class="tile-sizes text-[10px] sm:text-[11px] text-gray-100 font-mono font-semibold leading-tight line-clamp-1 break-words" :title="formatSizesSummary(item.shoe_sizes, 500)" x-text="formatSizesSummary(item.shoe_sizes)"></div>
                             <div class="pt-0.5 mt-0.5 border-t border-gray-700/60 font-mono leading-none">
                                 <template x-if="phase && phase.phase === 'LACING'">
                                     <div>
-                                        <span class="text-[11px] sm:text-xs font-bold tracking-tight block text-teal-300" x-text="phase.time"></span>
-                                        <span class="text-[8px] uppercase tracking-tighter block text-teal-400">👟 перевзування</span>
+                                        <span class="tile-line text-[11px] sm:text-xs font-bold tracking-tight block text-teal-300" x-text="phase.time"></span>
+                                        <span class="tile-label text-[8px] uppercase tracking-tighter block text-teal-400">👟 перевзування</span>
                                     </div>
                                 </template>
                                 <template x-if="(!phase || phase.phase !== 'LACING') && item.session_end">
                                     <div>
-                                        <span class="text-[11px] sm:text-xs font-bold tracking-tight block" :class="isOverdue(item.session_end) ? 'text-red-400' : 'text-blue-200'" x-text="getRemainingTime(item.session_end, now)"></span>
-                                        <span class="text-[8px] uppercase tracking-tighter block" :class="isOverdue(item.session_end) ? 'text-red-400 font-bold' : 'text-gray-400'" x-text="isOverdue(item.session_end) ? 'Час вийшов!' : 'залишилось'"></span>
+                                        <span class="tile-line text-[11px] sm:text-xs font-bold tracking-tight block" :class="isOverdue(item.session_end) ? 'text-red-400' : 'text-blue-200'" x-text="getRemainingTime(item.session_end, item, now)"></span>
+                                        <span class="tile-label text-[8px] uppercase tracking-tighter block" :class="isOverdue(item.session_end) ? 'text-red-400 font-bold' : 'text-gray-400'" x-text="isOverdue(item.session_end) ? 'Час вийшов!' : 'залишилось'"></span>
                                     </div>
                                 </template>
                                 <template x-if="!item.session_end">
-                                    <span class="text-[11px] sm:text-xs text-gray-300 font-semibold" x-text="item.duration_minutes + ' хв'"></span>
+                                    <span class="tile-line text-[11px] sm:text-xs text-gray-300 font-semibold" x-text="item.duration_minutes + ' хв'"></span>
                                 </template>
                             </div>
                         </div>
