@@ -9,6 +9,7 @@
     <script src="/static/js/shared.js"></script>
     <script src="/static/js/display.js"></script>
     <link rel="stylesheet" href="/static/css/akulamama.css">
+    <link rel="stylesheet" href="/static/css/tempos.css">
     <script defer src="/static/js/akulamama.js"></script>
 </head>
 <body class="ak-site ak-display font-sans" x-data="displayApp()">
@@ -21,16 +22,14 @@
 <main class="ak-page !max-w-none w-full">
     <div class="w-full h-full flex flex-col flex-1 min-h-0">
         <!-- Панель кнопок праворуч (між шапкою та блоками черги) -->
-        <div class="relative flex items-center justify-end space-x-3 mb-1.5 shrink-0">
-            <!-- Заголовок для телефона (шапка там прихована) -->
-            <span class="md:hidden absolute inset-0 flex items-center justify-center pointer-events-none text-sm font-black uppercase tracking-wider text-blue-400">Електронна черга</span>
+        <div class="flex items-center justify-end space-x-3 mb-1.5 shrink-0">
             <!-- Toggle Hide In Ice Button -->
             <button @click="hideOnIce = !hideOnIce" class="bg-transparent hover:bg-white/10 text-gray-300 hover:text-white px-2.5 py-1.5 rounded-lg border border-gray-700/60 text-xs font-mono transition flex items-center space-x-1.5"
                     :title="hideOnIce ? 'Показати блок На льоду' : 'Сховати блок На льоду'">
                 <span x-text="hideOnIce ? '🧊' : '🧊'"></span>
             </button>
             <!-- Fullscreen Toggle Button -->
-            <button @click="toggleFullScreen()" class="ak-fs-btn bg-transparent hover:bg-white/10 text-gray-300 hover:text-white p-2 rounded-lg border border-gray-700/60 text-sm font-mono transition flex items-center justify-center"
+            <button @click="toggleFullScreen()" class="bg-transparent hover:bg-white/10 text-gray-300 hover:text-white p-2 rounded-lg border border-gray-700/60 text-sm font-mono transition flex items-center justify-center"
                     :title="isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'">
                 <span class="text-base leading-none" x-text="isFullscreen ? '🗗' : '🗖'"></span>
             </button>
@@ -45,7 +44,7 @@
             <!-- TOP BLOCKS CONTAINER -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 top-sections-wrapper min-h-0">
                 <!-- INVITATIONS -->
-                <div class="bg-gray-800/80 rounded-2xl p-3.5 border border-green-500/30 shadow-xl flex flex-col min-h-0 h-full md:col-span-1" :class="callingItems.length === 0 ? 'ak-block-empty' : ''">
+                <div class="bg-gray-800/80 rounded-2xl p-3.5 border border-green-500/30 shadow-xl flex flex-col min-h-0 h-full md:col-span-1">
                     <h2 class="text-sm sm:text-base font-bold text-green-400 mb-2 flex items-center uppercase tracking-wide shrink-0">
                         <span class="inline-block w-2.5 h-2.5 bg-green-500 rounded-full mr-2 animate-ping"></span>Запрошуються
                     </h2>
@@ -72,7 +71,7 @@
                 </div>
 
                 <!-- QUEUED -->
-                <div class="bg-gray-800/80 rounded-2xl p-3.5 border border-gray-700 shadow-xl flex flex-col min-h-0 h-full md:col-span-2" :class="waitingItems.length === 0 ? 'ak-block-empty' : ''">
+                <div class="bg-gray-800/80 rounded-2xl p-3.5 border border-gray-700 shadow-xl flex flex-col min-h-0 h-full md:col-span-2">
                     <h2 class="text-sm sm:text-base font-bold text-yellow-400 mb-2 uppercase tracking-wide shrink-0">Готуються (Очікують)</h2>
                     <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 overflow-y-auto pr-1 flex-1 min-h-0 content-start">
                         <template :key="item.id" x-for="item in waitingItems">
@@ -94,7 +93,7 @@
             </div>
 
             <!-- ON ICE (SERVED) -->
-            <div x-show="!hideOnIce" class="bg-gray-800/80 rounded-2xl p-3 border border-blue-500/30 shadow-xl w-full flex flex-col min-h-0 bottom-section-wrapper h-full" :class="servedItems.length === 0 ? 'ak-block-empty' : ''">
+            <div x-show="!hideOnIce" class="bg-gray-800/80 rounded-2xl p-3 border border-blue-500/30 shadow-xl w-full flex flex-col min-h-0 bottom-section-wrapper h-full">
                 <h2 class="text-sm sm:text-base font-bold text-blue-400 mb-2 uppercase tracking-wide flex items-center shrink-0">
                     <span class="inline-block w-2 h-2 bg-blue-500 rounded-full mr-2"></span>На льоду (Обслуговуються)
                 </h2>
