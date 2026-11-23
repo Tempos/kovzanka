@@ -157,7 +157,7 @@ def create_user(
     new_user = User(username=username, password_hash=hashed_password, role=role)
     db.add(new_user)
     db.commit()
-    return RedirectResponse(url="/admin", status_code=303)
+    return RedirectResponse(url="/staff", status_code=303)
 
 
 @router.post("/users/{user_id}/edit")
@@ -175,7 +175,7 @@ def edit_user(
         user.password_hash = get_password_hash(password)
 
     db.commit()
-    return RedirectResponse(url="/admin", status_code=303)
+    return RedirectResponse(url="/staff", status_code=303)
 
 
 @router.post("/users/{user_id}/delete")
@@ -183,4 +183,4 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     if user := db.query(User).filter(User.id == user_id).first():
         db.delete(user)
         db.commit()
-    return RedirectResponse(url="/admin", status_code=303)
+    return RedirectResponse(url="/staff", status_code=303)
