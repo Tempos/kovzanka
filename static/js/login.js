@@ -1,10 +1,17 @@
 document.addEventListener("alpine:init", () => {
     Alpine.data("loginForm", () => ({
+        username: "",
         password: "",
         errorMessage: "",
 
         async submitLogin() {
             this.errorMessage = ""
+            const cleanUsername = this.username.trim()
+            if (!cleanUsername || !this.password) {
+                this.errorMessage = "Введіть логін та пароль"
+                return
+            }
+
             const urlParams = new URLSearchParams(window.location.search)
             const nextUrl = urlParams.get("next") || ""
             const roleParam = urlParams.get("role") || null
@@ -13,12 +20,12 @@ document.addEventListener("alpine:init", () => {
                 const response = await fetch("/api/login", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({password: this.password, role: roleParam})
+                    body: JSON.stringify({username: cleanUsername, password: this.password, role: roleParam})
                 })
 
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}))
-                    throw new Error(errData.detail || "Невірний пароль")
+                    throw new Error(errData.detail || "Невірний логін або пароль")
                 }
 
                 const data = await response.json()

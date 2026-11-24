@@ -26,18 +26,17 @@ function kasa2App() {
             issueStatus: "", // "" | "warning" | "danger"
             issueNote: ""
         },
-        cancelModal: {
-            open: false,
-            id: null,
-            ticketNumber: "",
-            reason: "",
-            error: ""
+        cancelModal: {open: false, id: null, ticketNumber: "", reason: "", error: ""},
+        openTechBreakModal() {
+            this.techBreakModal = {open: true, username: "", password: "", minutes: 10, customMinutes: "", error: ""}
+            this.$nextTick(() => this.$refs.adminPasswordInput?.focus())
         },
-        techBreakModal: {
-            open: false,
-            password: "",
-            error: ""
+        selectTechBreakMinutes(mins) {
+            this.techBreakModal.minutes = mins
+            this.techBreakModal.customMinutes = ""
+            this.techBreakModal.error = ""
         },
+        techBreakModal: {open: false, username: "", password: "", minutes: 10, customMinutes: "", error: ""},
 
         // --- COMPUTED PROPERTIES ---
         get issueFilter() {
@@ -153,6 +152,51 @@ function kasa2App() {
         get problemTicketsCount() {return this.issueTickets.length},
         get wsStatus() {return getWsStatus(this.wsConnected)},
 
+        // --- TECH BREAK ---
+        onCustomTechBreakInput() {
+            const parsed = parseInt(this.techBreakModal.customMinutes, 10)
+            if (!Number.isNaN(parsed) && parsed > 0) {this.techBreakModal.minutes = parsed}
+            this.techBreakModal.error = ""
+        },
+
+        get effectiveTechBreakMinutes() {
+            const custom = parseInt(this.techBreakModal.customMinutes, 10)
+            if (this.techBreakModal.customMinutes !== "" && !Number.isNaN(custom) && custom > 0) {return custom}
+            return this.techBreakModal.minutes || 10
+        },
+
+        async submitTechBreak() {
+            const cleanUsername = (this.techBreakModal.username || "").trim()
+            const mins = this.effectiveTechBreakMinutes
+            if (!cleanUsername || !this.techBreakModal.password || !mins || mins <= 0) {
+                this.techBreakModal.error = "Введіть логін, пароль та коректний час"
+                return
+            }
+            this.techBreakModal.error = ""
+            try {
+                const res = await fetch(`/api/queue/mass-extend`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        minutes: mins,
+                        username: cleanUsername,
+                        password: this.techBreakModal.password
+                    })
+                })
+                if (res.ok) {
+                    this.techBreakModal.open = false
+                    this.techBreakModal.username = ""
+                    this.techBreakModal.password = ""
+                    this.techBreakModal.customMinutes = ""
+                    this.techBreakModal.error = ""
+                    await this.fetchQueue()
+                } else {this.techBreakModal.error = await this.readErrorDetail(res, "Невірний логін/пароль або помилка сервера")}
+            } catch (e) {
+                console.error("Помилка масового додавання часу:", e)
+                this.techBreakModal.error = "Помилка мережі"
+            }
+        },
+
         // --- TICKET EDITING ---
         openEditModal(item) {
             const currentSizes = Array.isArray(item.shoe_sizes) ? [...item.shoe_sizes] : []
@@ -170,6 +214,17 @@ function kasa2App() {
                 issueNote: item.issue_note || ""
             }
             if (typeof this.fetchInventory === "function") {this.fetchInventory()}
+        },
+
+        async readErrorDetail(res, fallbackMessage) {
+            const rawText = await res.text()
+            if (rawText) {
+                try {
+                    const err = JSON.parse(rawText)
+                    if (err?.detail) return String(err.detail)
+                } catch {return rawText.trim()}
+            }
+            return `${fallbackMessage} (${res.status})`
         },
 
         async submitEdit() {
@@ -190,10 +245,7 @@ function kasa2App() {
                     this.editModal.open = false
                     await this.fetchQueue()
                     if (typeof this.fetchInventory === "function") await this.fetchInventory()
-                } else {
-                    const err = await res.json()
-                    alert(err.detail || "Помилка при оновленні квитка")
-                }
+                } else {alert(await this.readErrorDetail(res, "Помилка при оновленні квитка"))}
             } catch (e) {console.error("Помилка редагування:", e)}
         },
 
@@ -233,6 +285,7 @@ function kasa2App() {
                 this.cancelModal.error = "Введіть причину скасування (мінімум 3 символи)."
                 return
             }
+            this.cancelModal.error = ""
             try {
                 const res = await fetch(`/api/queue/${this.cancelModal.id}/cancel`, {
                     method: "POST",
@@ -241,11 +294,9 @@ function kasa2App() {
                 })
                 if (res.ok) {
                     this.cancelModal.open = false
+                    this.cancelModal.error = ""
                     await this.fetchQueue()
-                } else {
-                    const err = await res.json()
-                    this.cancelModal.error = err.detail || "Не вдалося скасувати квиток"
-                }
+                } else {this.cancelModal.error = await this.readErrorDetail(res, "Не вдалося скасувати квиток")}
             } catch (e) {console.error("Помилка скасування:", e)}
         },
 
@@ -350,28 +401,6 @@ function kasa2App() {
             return item.duration_minutes ? item.duration_minutes + " хв" : "—"
         },
 
-        async submitTechBreak() {
-            if (!this.techBreakModal.password) return
-            try {
-                const res = await fetch(`/api/queue/mass-extend`, {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({minutes: 10, admin_password: this.techBreakModal.password})
-                })
-                if (res.ok) {
-                    this.techBreakModal.open = false
-                    this.techBreakModal.password = ""
-                    await this.fetchQueue()
-                } else {
-                    const err = await res.json()
-                    this.techBreakModal.error = err.detail || "Невірний пароль або помилка сервера"
-                }
-            } catch (e) {
-                console.error("Помилка масового додавання часу:", e)
-                this.techBreakModal.error = "Помилка мережі"
-            }
-        },
-
         async skipLacing(itemId) {
             try {
                 const response = await fetch(`/api/queue/${itemId}/skip-lacing`, {
@@ -410,8 +439,7 @@ function kasa2App() {
                 })
                 if (!res.ok) {
                     if (item) {item.issue_status = prevStatus; item.issue_note = prevNote}
-                    const err = await res.json()
-                    alert(err.detail || "Не вдалося оновити статус проблеми")
+                    alert(await this.readErrorDetail(res, "Не вдалося оновити статус проблеми"))
                 } else {await this.fetchQueue()}
             } catch (e) {
                 if (item) {item.issue_status = prevStatus; item.issue_note = prevNote}

@@ -51,7 +51,7 @@
 
                 <!-- Кнопка масового додавання часу / технічної перерви -->
                 <button class="inline-flex items-center px-3 py-1.5 border border-amber-300 text-sm font-medium rounded-md text-amber-800 bg-amber-50 hover:bg-amber-100 shadow-sm transition"
-                        @click="techBreakModal.open = true; techBreakModal.password = ''; techBreakModal.error = ''; $nextTick(() => $refs.adminPasswordInput.focus())" title="Технічна перерва: +10 хв до всіх активних квитків">⏱️ +10 хв
+                        @click="openTechBreakModal()" title="Технічна перерва: масове додавання часу активним квиткам">⏱️ Перерва
                 </button>
 
                 <!-- WebSocket Status Badge with Mouseover Tooltip -->

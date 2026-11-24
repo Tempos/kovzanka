@@ -5,16 +5,14 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.api.auth import (
-    build_role_context,
-    get_password_hash,
-    has_any_role,
-)
+from app.api.auth import build_role_context, get_password_hash, has_any_role, verify_admin
 from app.db import get_db
 from app.models import User
 
 router = APIRouter(tags=["UI Pages"])
 templates = Jinja2Templates(directory="static")
+
+ALLOWED_USER_ROLES = {"admin", "kasa1", "kasa2"}
 
 
 def _render_page(
@@ -146,41 +144,55 @@ def login_page(
     return _render_page(request, "login.html", admin_session, kasa1_session, kasa2_session)
 
 
-@router.post("/users/create")
+@router.post("/users/create", dependencies=[Depends(verify_admin)])
 def create_user(
         username: str = Form(...), password: str = Form(...), role: str = Form("kasa2"), db: Session = Depends(get_db)
 ):
-    if db.query(User).filter(User.username == username).first():
+    clean_username = username.strip()
+    clean_role = role.strip().lower()
+    if not clean_username or not password:
+        raise HTTPException(status_code=400, detail="Логін та пароль обов'язкові")
+    if clean_role not in ALLOWED_USER_ROLES:
+        raise HTTPException(status_code=400, detail="Неприпустима роль користувача")
+    if db.query(User).filter(User.username == clean_username).first():
         raise HTTPException(status_code=400, detail="Користувач з таким логіном вже існує")
 
     hashed_password = get_password_hash(password)
-    new_user = User(username=username, password_hash=hashed_password, role=role)
+    new_user = User(username=clean_username, password_hash=hashed_password, role=clean_role)
     db.add(new_user)
     db.commit()
-    return RedirectResponse(url="/staff", status_code=303)
+    return RedirectResponse(url="/staff?users_modal=1", status_code=303)
 
 
-@router.post("/users/{user_id}/edit")
+@router.post("/users/{user_id}/edit", dependencies=[Depends(verify_admin)])
 def edit_user(
-        user_id: int, username: str = Form(...), password: str = Form(None), role: str = Form(...),
+        user_id: int,
+        username: str = Form(...),
+        password: str = Form(None),
+        role: str = Form(...),
         db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    if not (user := db.query(User).filter(User.id == user_id).first()):
         raise HTTPException(status_code=404, detail="Користувача не знайдено")
+    if not (clean_username := username.strip()):
+        raise HTTPException(status_code=400, detail="Логін не може бути порожнім")
+    if (clean_role := role.strip().lower()) not in ALLOWED_USER_ROLES:
+        raise HTTPException(status_code=400, detail="Неприпустима роль користувача")
+    if db.query(User).filter(User.username == clean_username, User.id != user_id).first():
+        raise HTTPException(status_code=400, detail="Користувач з таким логіном вже існує")
 
-    user.username = username
-    user.role = role
+    user.username = clean_username
+    user.role = clean_role
     if password and password.strip():
         user.password_hash = get_password_hash(password)
 
     db.commit()
-    return RedirectResponse(url="/staff", status_code=303)
+    return RedirectResponse(url="/staff?users_modal=1", status_code=303)
 
 
-@router.post("/users/{user_id}/delete")
+@router.post("/users/{user_id}/delete", dependencies=[Depends(verify_admin)])
 def delete_user(user_id: int, db: Session = Depends(get_db)):
     if user := db.query(User).filter(User.id == user_id).first():
         db.delete(user)
         db.commit()
-    return RedirectResponse(url="/staff", status_code=303)
+    return RedirectResponse(url="/staff?users_modal=1", status_code=303)

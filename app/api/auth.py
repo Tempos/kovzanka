@@ -6,12 +6,12 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.limiter import limiter
 from app.models import User
+from app.schemas import LoginRequest
 
 router = APIRouter(tags=["API Endpoints"])
 
@@ -21,18 +21,16 @@ KASA2_SESSIONS = set()
 ADMIN_SESSIONS = set()
 
 
-class RoleLoginRequest(BaseModel):
-    password: str
-    role: Optional[str] = None
-
-
 @router.post("/api/login")
 @limiter.limit("5/minute")
-def login(data: RoleLoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    users = db.query(User).all()
+def login(data: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    clean_username = data.username.strip()
+    if not clean_username or not data.password:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Введіть логін та пароль")
 
-    if not (user := next((u for u in users if verify_password(data.password, u.password_hash)), None)):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Невірний пароль")
+    user = db.query(User).filter(User.username == clean_username).first()
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Невірний логін або пароль")
 
     assigned_role = (user.role or "").strip().lower()
     session_token = secrets.token_hex(32)
@@ -49,9 +47,7 @@ def login(data: RoleLoginRequest, request: Request, response: Response, db: Sess
         KASA2_SESSIONS.add(session_token)
         cookie_name = "kasa2_session"
     else:
-        # Безпечний дефолт для будь-яких інших ролей
-        KASA2_SESSIONS.add(session_token)
-        cookie_name = "kasa2_session"
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Неприпустима роль користувача")
 
     response.set_cookie(
         key=cookie_name,
@@ -61,7 +57,7 @@ def login(data: RoleLoginRequest, request: Request, response: Response, db: Sess
         secure=os.getenv("COOKIE_SECURE", "true").lower() == "true",
         max_age=36000,
     )
-    return {"status": "success", "role": assigned_role}
+    return {"status": "success", "username": user.username, "role": assigned_role}
 
 
 @router.get("/logout")

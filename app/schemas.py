@@ -46,17 +46,15 @@ class IssueStatusRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    pin: str
+    username: str
+    password: str
+    role: Optional[str] = None
 
 
 class MassExtendRequest(BaseModel):
-    admin_password: Optional[str] = None
-    password: Optional[str] = None  # Підтримуємо обидва варіанти на випадок різного фронтенду
+    username: str
+    password: str
     minutes: int = 10
-
-    @property
-    def effective_password(self) -> str:
-        return self.admin_password or self.password or ""
 
 
 class QueueItemResponse(BaseModel):
