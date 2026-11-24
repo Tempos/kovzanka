@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import app.api.auth as auth_module
 import app.db as db_module
 import main as main_module
 from app.db import get_db
@@ -26,6 +27,23 @@ def mock_telegram(monkeypatch):
 
 async def _async_noop():
     pass
+
+
+@pytest.fixture(autouse=True)
+def disable_secure_cookie_in_tests(monkeypatch):
+    monkeypatch.setenv("COOKIE_SECURE", "false")
+
+
+@pytest.fixture(autouse=True)
+def clear_sessions():
+    """Reset in-memory session sets before and after each test."""
+    auth_module.ADMIN_SESSIONS.clear()
+    auth_module.KASA1_SESSIONS.clear()
+    auth_module.KASA2_SESSIONS.clear()
+    yield
+    auth_module.ADMIN_SESSIONS.clear()
+    auth_module.KASA1_SESSIONS.clear()
+    auth_module.KASA2_SESSIONS.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -59,3 +77,9 @@ def override_dependency(db_session):
 def client(db_session):
     """Returns a TestClient configured with test overrides and mocked lifespan."""
     return TestClient(app)
+
+
+def login_as(client: TestClient, username: str, password: str) -> TestClient:
+    res = client.post("/api/login", json={"username": username, "password": password})
+    assert res.status_code == 200
+    return client
