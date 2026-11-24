@@ -51,7 +51,7 @@
 
                 <!-- Кнопка масового додавання часу / технічної перерви -->
                 <button class="inline-flex items-center px-3 py-1.5 border border-amber-300 text-sm font-medium rounded-md text-amber-800 bg-amber-50 hover:bg-amber-100 shadow-sm transition"
-                        @click="techBreakModal.open = true; techBreakModal.password = ''; techBreakModal.error = ''; $nextTick(() => $refs.adminPasswordInput.focus())" title="Технічна перерва: +10 хв до всіх активних квитків">⏱️ +10 хв
+                        @click="openTechBreakModal()" title="Технічна перерва: масове додавання часу активним квиткам">⏱️ Перерва
                 </button>
 
                 <!-- WebSocket Status Badge with Mouseover Tooltip -->
@@ -116,7 +116,7 @@
 
                             <!-- Відображення опису проблеми, якщо вона є -->
                             <template x-if="item.issue_note">
-                                <div :title="item.issue_note" class="mt-1 text-xs text-rose-900 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-200 max-w-[180px] truncate cursor-help font-semibold">
+                                <div :title="item.issue_note" class="ak-issue-note mt-1 text-xs text-white px-2 py-0.5 rounded border max-w-[180px] truncate cursor-help font-semibold">
                                     ⚠️ <span x-text="item.issue_note"></span>
                                 </div>
                             </template>

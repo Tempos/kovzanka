@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.auth import verify_admin, verify_kasa1, verify_kasa2, verify_password
+from app.api.auth import verify_kasa1, verify_kasa2, verify_password
 from app.bot import send_telegram_notification
 from app.db import DBSession, get_db
 from app.inventory import revert_unfulfillable_calling_tickets
@@ -212,6 +212,7 @@ async def update_ticket_issue_status(item_id: int, payload: IssueStatusRequest, 
     await manager.broadcast("QUEUE_UPDATED")
     return item
 
+
 @router.post("/queue/{item_id}/revert", dependencies=[Depends(verify_kasa2)])
 async def revert_ticket_status(item_id: int, db: Session = Depends(get_db)):
     if not (ticket := db.query(QueueItem).filter(QueueItem.id == item_id).first()):
@@ -337,14 +338,14 @@ async def toggle_stop_timer(item_id: int, db: Session = Depends(get_db)):
 
 @router.post("/queue/mass-extend", dependencies=[Depends(verify_kasa2)])
 async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends(get_db)):
-    admin_users = db.query(User).filter(User.role == "admin").all()
-    entered_pass = payload.effective_password
-
-    if not any(verify_password(entered_pass, u.password_hash) for u in admin_users):
-        raise HTTPException(status_code=403, detail="Невірний пароль адміністратора")
+    clean_name = payload.username.strip()
+    admin = db.query(User).filter(User.username == clean_name, User.role == "admin").first()
+    if not clean_name or not payload.password:
+        raise HTTPException(status_code=403, detail="Введіть логін та пароль адміністратора")
+    if not admin or not verify_password(payload.password, admin.password):
+        raise HTTPException(status_code=403, detail="Невірний логін або пароль адміністратора")
 
     minutes_to_add = payload.minutes if payload.minutes > 0 else 10
-
     now = datetime.now(timezone.utc)
     updated_count = 0
 
@@ -354,10 +355,9 @@ async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends
             QueueStatus.SERVED, "SERVED", "ОБСЛУГОВУЄТЬСЯ"
         ])
     ).all()
-
     for item in active_items:
         if str(item.status) in [str(QueueStatus.CALLING), "CALLING", "ВИКЛИКАЄТЬСЯ"]:
-            item.called_at += timedelta(minutes=minutes_to_add) if item.called_at else now
+            item.called_at = (item.called_at + timedelta(minutes=minutes_to_add)) if item.called_at else now
         else:
             item.duration_minutes += minutes_to_add
             if item.session_end:
@@ -368,6 +368,7 @@ async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends
 
             item.overtime_stopped_at = None
         updated_count += 1
+
     db.commit()
     await manager.broadcast("QUEUE_UPDATED")
     return {"status": "success", "updated_count": updated_count}

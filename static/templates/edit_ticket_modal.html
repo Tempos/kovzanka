@@ -17,10 +17,10 @@
             </div>
             <div class="flex gap-2">
                 <button type="button" @click="editModal.issueStatus = 'warning'" class="flex-1 py-2 px-3 rounded-lg border text-xs transition" :class="editModal.issueStatus === 'warning' ? 'bg-amber-500 text-white font-bold border-amber-600 ring-2 ring-amber-300 shadow' : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'">
-                    🟡 Увага (Бурштиновий)
+                    🟡 Увага
                 </button>
                 <button type="button" @click="editModal.issueStatus = 'danger'" class="flex-1 py-2 px-3 rounded-lg border text-xs transition" :class="editModal.issueStatus === 'danger' ? 'bg-red-600 text-white font-bold border-red-700 ring-2 ring-red-300 shadow' : 'bg-red-50 text-red-900 border-red-300 hover:bg-red-100'">
-                    🔴 Проблема (Червоний)
+                    🔴 Проблема
                 </button>
             </div>
             <div x-show="editModal.issueStatus" class="space-y-2 pt-1" x-cloak>
