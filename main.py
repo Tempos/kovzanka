@@ -26,36 +26,41 @@ import os
 
 def ensure_columns():
     inspector = inspect(engine)
+    is_mysql = engine.dialect.name == "mysql"
+
+    if inspector.has_table("users"):
+        user_cols = {col["name"]: col for col in inspector.get_columns("users")}
+        with engine.begin() as conn:
+            if "password_hash" in user_cols and "password" not in user_cols:
+                if is_mysql:
+                    conn.execute(text("ALTER TABLE users CHANGE COLUMN password_hash password VARCHAR(255) NOT NULL;"))
+                else:
+                    conn.execute(text("ALTER TABLE users RENAME COLUMN password_hash TO password;"))
+                print("[DB MIGRATION] Перейменовано колонку users.password_hash на users.password.")
+            elif is_mysql and (pwd_col := user_cols.get("password")):
+                col_len = getattr(pwd_col.get("type"), "length", None)
+                if col_len is not None and col_len < 255:
+                    conn.execute(text("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NOT NULL;"))
+                    print("[DB MIGRATION] Розширено колонку users.password до VARCHAR(255) (MySQL).")
 
     if inspector.has_table("queue"):
-        columns = {col["name"]: col for col in inspector.get_columns("queue")}
-
+        queue_cols = {col["name"]: col for col in inspector.get_columns("queue")}
         with engine.begin() as conn:
-            if "issue_status" not in columns:
+            if "issue_status" not in queue_cols:
                 conn.execute(text("ALTER TABLE queue ADD COLUMN issue_status VARCHAR(64) DEFAULT NULL;"))
                 print("[DB MIGRATION] Додано колонку issue_status до таблиці queue.")
 
-            if "issue_note" not in columns:
+            if "issue_note" not in queue_cols:
                 conn.execute(text("ALTER TABLE queue ADD COLUMN issue_note TEXT DEFAULT NULL;"))
                 print("[DB MIGRATION] Додано колонку issue_note до таблиці queue.")
 
-            if phone_col := columns.get("phone"):
+            if is_mysql and (phone_col := queue_cols.get("phone")):
                 is_nullable = (
                     phone_col["nullable"] if isinstance(phone_col, dict) else getattr(phone_col, "nullable", True)
                 )
                 if not is_nullable:
                     conn.execute(text("ALTER TABLE queue MODIFY COLUMN phone TEXT NULL;"))
                     print("[DB MIGRATION] Знято NOT NULL з колонки queue.phone (MySQL).")
-
-    if inspector.has_table("users"):
-        user_columns = {col["name"]: col for col in inspector.get_columns("users")}
-        if password_col := user_columns.get("password_hash"):
-            col_type = password_col.get("type")
-            col_length = getattr(col_type, "length", None)
-            if col_length is not None and col_length < 255:
-                with engine.begin() as conn:
-                    conn.execute(text("ALTER TABLE users MODIFY COLUMN password_hash VARCHAR(255) NOT NULL;"))
-                    print("[DB MIGRATION] Розширено колонку users.password_hash до VARCHAR(255) (MySQL).")
 
 
 def init_default_users(db: SessionLocal):
@@ -68,7 +73,7 @@ def init_default_users(db: SessionLocal):
         existing = db.query(User).filter(User.username == user_data["username"]).first()
         if not existing:
             hashed_password = get_password_hash(user_data["password"])
-            new_user = User(username=user_data["username"], password_hash=hashed_password, role=user_data["role"])
+            new_user = User(username=user_data["username"], password=hashed_password, role=user_data["role"])
             db.add(new_user)
     db.commit()
 

@@ -29,7 +29,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Введіть логін та пароль")
 
     user = db.query(User).filter(User.username == clean_username).first()
-    if not user or not verify_password(data.password, user.password_hash):
+    if not user or not verify_password(data.password, user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Невірний логін або пароль")
 
     assigned_role = (user.role or "").strip().lower()
@@ -131,13 +131,7 @@ def build_role_context(
     is_kasa1 = "kasa1" in roles and not is_admin and not is_kasa2
     role = "admin" if is_admin else "kasa2" if is_kasa2 else "kasa1" if is_kasa1 else None
 
-    return {
-        "is_admin": is_admin,
-        "is_kasa1": is_kasa1,
-        "is_kasa2": is_kasa2,
-        "role": role,
-        "roles": roles,
-    }
+    return {"is_admin": is_admin, "is_kasa1": is_kasa1, "is_kasa2": is_kasa2, "role": role, "roles": roles}
 
 
 def is_authenticated_kasa1(kasa1_session: Optional[str] = None, admin_session: Optional[str] = None) -> bool:

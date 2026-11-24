@@ -116,7 +116,7 @@
 
                             <!-- Відображення опису проблеми, якщо вона є -->
                             <template x-if="item.issue_note">
-                                <div :title="item.issue_note" class="mt-1 text-xs text-rose-900 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-200 max-w-[180px] truncate cursor-help font-semibold">
+                                <div :title="item.issue_note" class="ak-issue-note mt-1 text-xs text-white px-2 py-0.5 rounded border max-w-[180px] truncate cursor-help font-semibold">
                                     ⚠️ <span x-text="item.issue_note"></span>
                                 </div>
                             </template>

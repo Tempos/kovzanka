@@ -17,7 +17,7 @@ ALLOWED_USER_ROLES = {"admin", "kasa1", "kasa2"}
 
 def _render_page(
         request: Request,
-        template_name: str,
+        name: str,
         admin_session: Optional[str],
         kasa1_session: Optional[str],
         kasa2_session: Optional[str],
@@ -32,7 +32,12 @@ def _render_page(
     context = build_role_context(admin_session, kasa1_session, kasa2_session)
     if extra_context:
         context.update(extra_context)
-    return templates.TemplateResponse(request=request, name=template_name, context=context)
+
+    response = templates.TemplateResponse(request=request, name=name, context=context)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @router.get("/")
@@ -148,17 +153,17 @@ def login_page(
 def create_user(
         username: str = Form(...), password: str = Form(...), role: str = Form("kasa2"), db: Session = Depends(get_db)
 ):
-    clean_username = username.strip()
-    clean_role = role.strip().lower()
-    if not clean_username or not password:
+    username = username.strip()
+    role = role.strip().lower()
+    if not username or not password:
         raise HTTPException(status_code=400, detail="Логін та пароль обов'язкові")
-    if clean_role not in ALLOWED_USER_ROLES:
+    if role not in ALLOWED_USER_ROLES:
         raise HTTPException(status_code=400, detail="Неприпустима роль користувача")
-    if db.query(User).filter(User.username == clean_username).first():
+    if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="Користувач з таким логіном вже існує")
 
-    hashed_password = get_password_hash(password)
-    new_user = User(username=clean_username, password_hash=hashed_password, role=clean_role)
+    password = get_password_hash(password)
+    new_user = User(username=username, password=password, role=role)
     db.add(new_user)
     db.commit()
     return RedirectResponse(url="/staff?users_modal=1", status_code=303)
@@ -174,17 +179,17 @@ def edit_user(
 ):
     if not (user := db.query(User).filter(User.id == user_id).first()):
         raise HTTPException(status_code=404, detail="Користувача не знайдено")
-    if not (clean_username := username.strip()):
+    if not (username := username.strip()):
         raise HTTPException(status_code=400, detail="Логін не може бути порожнім")
-    if (clean_role := role.strip().lower()) not in ALLOWED_USER_ROLES:
+    if (role := role.strip().lower()) not in ALLOWED_USER_ROLES:
         raise HTTPException(status_code=400, detail="Неприпустима роль користувача")
-    if db.query(User).filter(User.username == clean_username, User.id != user_id).first():
+    if db.query(User).filter(User.username == username, User.id != user_id).first():
         raise HTTPException(status_code=400, detail="Користувач з таким логіном вже існує")
 
-    user.username = clean_username
-    user.role = clean_role
+    user.username = username
+    user.role = role
     if password and password.strip():
-        user.password_hash = get_password_hash(password)
+        user.password = get_password_hash(password)
 
     db.commit()
     return RedirectResponse(url="/staff?users_modal=1", status_code=303)

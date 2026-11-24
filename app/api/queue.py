@@ -338,11 +338,11 @@ async def toggle_stop_timer(item_id: int, db: Session = Depends(get_db)):
 
 @router.post("/queue/mass-extend", dependencies=[Depends(verify_kasa2)])
 async def mass_extend_sessions(payload: MassExtendRequest, db: Session = Depends(get_db)):
-    clean_admin_user = payload.username.strip()
-    admin_user = db.query(User).filter(User.username == clean_admin_user, User.role == "admin").first()
-    if not clean_admin_user or not payload.password:
+    clean_name = payload.username.strip()
+    admin = db.query(User).filter(User.username == clean_name, User.role == "admin").first()
+    if not clean_name or not payload.password:
         raise HTTPException(status_code=403, detail="Введіть логін та пароль адміністратора")
-    if not admin_user or not verify_password(payload.password, admin_user.password_hash):
+    if not admin or not verify_password(payload.password, admin.password):
         raise HTTPException(status_code=403, detail="Невірний логін або пароль адміністратора")
 
     minutes_to_add = payload.minutes if payload.minutes > 0 else 10

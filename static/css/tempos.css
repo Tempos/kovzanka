@@ -29,6 +29,8 @@ body.ak-kasa2 .timer-frozen { color: #fcd34d !important; }
    тому задаємо власний колір: напівпрозора заливка + світлий текст — у тому ж стилі, що й «ЧЕКАЄ» та «ОБСЛУГОВУЄТЬСЯ». */
 body.ak-kasa2 .status-calling {background-color: rgb(16 185 129 / .22) !important; /* emerald-500, ~22% */color: #6ee7b7 !important; /* emerald-300 */}
 
+/* Каса 2: контрастна плашка примітки проблеми */
+body.ak-kasa2 .ak-issue-note {background-color: #4c1324 !important;border-color: #fb7185 !important;color: #ffe4e6 !important;}
 
 /* ==========================================================================
    Табло черги
