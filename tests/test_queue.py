@@ -1,5 +1,5 @@
-from app.models import QueueItem, QueueStatus, SkateInventory
 from app.inventory import revert_unfulfillable_calling_tickets
+from app.models import QueueItem, QueueStatus, SkateInventory
 
 
 def test_revert_unfulfillable_calling_tickets_single_size(db_session):

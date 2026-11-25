@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
-from app.api.auth import verify_kasa2
+from app.api.auth import verify_admin, verify_kasa2
 from app.models import QueueItem, QueueStatus, SkateInventory
 from main import app
 
@@ -72,7 +72,7 @@ def test_issue_status_set_and_clear_note(client: TestClient, db_session):
 
 
 def test_patch_inventory_blocks_below_in_use(client: TestClient, db_session):
-    app.dependency_overrides[verify_kasa2] = lambda: True
+    app.dependency_overrides[verify_admin] = lambda: True
     try:
         db_session.add(SkateInventory(size="39 (фігурні)", total_stock=3, maintenance_count=0, is_deleted=False))
         db_session.add(
@@ -90,4 +90,4 @@ def test_patch_inventory_blocks_below_in_use(client: TestClient, db_session):
         res = client.patch("/api/inventory", json={"size": "39 (фігурні)", "total_stock": 1})
         assert res.status_code == 400
     finally:
-        app.dependency_overrides.pop(verify_kasa2, None)
+        app.dependency_overrides.pop(verify_admin, None)

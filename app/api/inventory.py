@@ -1,10 +1,10 @@
 import re
 import traceback
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Cookie
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.api.auth import is_authenticated_kasa2, is_authenticated_admin, verify_kasa2
+from app.api.auth import is_authenticated_admin, verify_admin
 from app.db import get_db
 from app.inventory import calculate_live_inventory, process_range_expansion, upsert_inventory_item
 from app.models import QueueItem, QueueStatus, SkateInventory
@@ -14,7 +14,7 @@ from app.ws_manager import manager
 router = APIRouter(prefix="/api", tags=["API Endpoints"])
 
 
-@router.post("/inventory", dependencies=[Depends(verify_kasa2)])
+@router.post("/inventory", dependencies=[Depends(verify_admin)])
 async def create_inventory_item(payload: InventoryItemCreate, db: Session = Depends(get_db)):
     """Create a single inventory item, an adjustable range item, or expand a numeric range."""
     try:
@@ -39,7 +39,7 @@ async def create_inventory_item(payload: InventoryItemCreate, db: Session = Depe
         raise HTTPException(status_code=500, detail=f"Внутрішня помилка сервера: {str(e)}") from e
 
 
-@router.patch("/inventory", dependencies=[Depends(verify_kasa2)])
+@router.patch("/inventory", dependencies=[Depends(verify_admin)])
 async def update_inventory_item(payload: InventoryUpdatePayload, db: Session = Depends(get_db)):
     if not (item := db.query(SkateInventory).filter(SkateInventory.size == payload.size).first()):
         raise HTTPException(status_code=404, detail="Розмір не знайдено")
@@ -77,18 +77,14 @@ async def update_inventory_item(payload: InventoryUpdatePayload, db: Session = D
 
 
 @router.get("/inventory")
-def get_inventory_status(request: Request, db: Session = Depends(get_db), admin_session: str = Cookie(None), kasa2_session: str = Cookie(None)):
-    """Exposes current counts to cashiers for inventory tracking."""
+def get_inventory_status(request: Request, db: Session = Depends(get_db), admin_session: str = Cookie(None)):
+    """Exposes current counts for inventory tracking."""
     active_skaters = db.query(QueueItem).filter(
         QueueItem.status.in_([QueueStatus.WAITING, QueueStatus.CALLING, QueueStatus.SERVED])
     ).all()
 
     db_inventory = db.query(SkateInventory).filter(SkateInventory.is_deleted == False).all()
     live_inventory = calculate_live_inventory(active_skaters, db_inventory)
-
-    # Check if the requester is authenticated as Admin or Kasa 2
-    is_admin = is_authenticated_admin(admin_session) or is_authenticated_kasa2(kasa2_session)
-
     for item in db_inventory:
         if item.size not in live_inventory:
             live_inventory[item.size] = {
@@ -100,14 +96,15 @@ def get_inventory_status(request: Request, db: Session = Depends(get_db), admin_
             }
 
         live_inventory[item.size]["total"] = item.total_stock
-
-        if is_admin:  # Expose maintenance_count strictly to authenticated admin/staff
+        if is_authenticated_admin(admin_session):
             live_inventory[item.size]["maintenance_count"] = item.maintenance_count
+        else:
+            live_inventory[item.size].pop("maintenance_count", None)
 
     return live_inventory
 
 
-@router.delete("/inventory", dependencies=[Depends(verify_kasa2)])
+@router.delete("/inventory", dependencies=[Depends(verify_admin)])
 async def delete_inventory_item(size: str, db: Session = Depends(get_db)):
     if not (item := db.query(SkateInventory).filter(SkateInventory.size == size).first()):
         raise HTTPException(status_code=404, detail="Розмір не знайдено")

@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta, timezone
+
+from fastapi.testclient import TestClient
+
 from app.api.auth import get_password_hash, verify_kasa1, verify_kasa2
 from app.models import QueueItem, QueueStatus, User
 from main import app
 from tests.conftest import login_as
-from fastapi.testclient import TestClient
-from app.models import QueueItem, QueueStatus
-from app.api.auth import verify_kasa1, verify_kasa2
-from main import app
+
 
 def _seed_staff_users(db_session):
     db_session.add_all([
