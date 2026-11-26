@@ -97,7 +97,8 @@
                         <div class="text-3xl">⛸️</div>
                         <div>
                             <p class="font-bold text-lg text-white">Ваша черга підійшла!</p>
-                            <p class="text-sm">Підійдіть, будь ласка, до <strong>Каси 2</strong> для отримання ковзанів.</p>
+                            <p class="text-sm">Підійдіть, будь ласка, до <strong>Каси 2</strong> для отримання ковзанів.
+                            </p>
                         </div>
                         <template x-if="phase">
                             <div class="bg-slate-950/60 rounded-xl py-2 px-3 font-mono">
@@ -120,10 +121,11 @@
 
                 <!-- Картка для На льоду (Обслуговуються) у точній копії плитки з табло -->
                 <template x-if="data.status === 'ОБСЛУГОВУЄТЬСЯ' || data.status === 'SERVED'">
-                    <div class="border rounded-2xl p-4 text-center flex flex-col justify-between transition shadow-xl" x-data="{ get phase() { return getSessionPhase(data, now) } }" :class="isOverdue(data.session_end) ? 'bg-red-950/80 border-red-500 animate-pulse' : (phase?.phase === 'LACING' ? 'bg-teal-950/80 border-teal-500/60' : 'bg-blue-950/80 border-blue-500/50')"><div>
-                        <div class="text-xs text-gray-300 font-mono mb-1 uppercase tracking-wider">Інформація сеансу</div>
-                        <div class="text-xs text-gray-200 font-mono break-words" x-text="'Розмір(и): ' + formatSizesSummary(data.shoe_sizes)"></div>
-                    </div>
+                    <div class="border rounded-2xl p-4 text-center flex flex-col justify-between transition shadow-xl" x-data="{ get phase() { return getSessionPhase(data, now) } }" :class="isOverdue(data.session_end) ? 'bg-red-950/80 border-red-500 animate-pulse' : (phase?.phase === 'LACING' ? 'bg-teal-950/80 border-teal-500/60' : 'bg-blue-950/80 border-blue-500/50')">
+                        <div>
+                            <div class="text-xs text-gray-300 font-mono mb-1 uppercase tracking-wider">Інформація сеансу</div>
+                            <div class="text-xs text-gray-200 font-mono break-words" x-text="'Розмір(и): ' + formatSizesSummary(data.shoe_sizes)"></div>
+                        </div>
                         <div class="mt-4 pt-3 border-t border-gray-700/60 font-mono">
                             <template x-if="phase && phase.phase === 'LACING'">
                                 <div>
@@ -162,8 +164,6 @@
         </template>
     </div>
 </main>
-<footer class="ak-footer">
-    <span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span><a href="/staff">Вхід для працівників ↗</a>
-</footer>
+<footer class="ak-footer"><span>© Акула Мама · Ковзанка</span><span>Час для руху. Місце для вражень.</span></footer>
 </body>
 </html>

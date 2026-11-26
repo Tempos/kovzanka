@@ -67,7 +67,15 @@ def inventory_page(
         kasa1_session: Optional[str] = Cookie(None),
         kasa2_session: Optional[str] = Cookie(None),
 ):
-    return _render_page(request, "inventory.html", admin_session, kasa1_session, kasa2_session)
+    return _render_page(
+        request,
+        "inventory.html",
+        admin_session,
+        kasa1_session,
+        kasa2_session,
+        required_roles={"admin", "kasa1", "kasa2"},
+        login_redirect="/login?next=/inventory",
+    )
 
 
 @router.get("/kasa1")
