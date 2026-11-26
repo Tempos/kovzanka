@@ -77,6 +77,14 @@
                  'ak-only-ice': !showCalling && !showWaiting && showOnIce,
                  'ak-calling-and-ice': showCalling && !showWaiting && showOnIce
              }">
+            <template x-if="queueLoadError && queue.length === 0">
+                <div class="px-4 py-2.5 rounded-xl bg-red-950/85 border border-red-500/50 text-red-200 text-xs sm:text-sm font-mono flex items-center justify-between gap-3 shrink-0">
+                    <span>⚠️ Помилка завантаження черги. Перевірте з'єднання або дочекайтесь оновлення.</span>
+                    <button type="button" @click="fetchQueue()" class="px-2.5 py-1 rounded bg-red-800/70 hover:bg-red-700 text-white text-xs font-bold transition shrink-0">
+                        Повторити
+                    </button>
+                </div>
+            </template>
             <!-- TOP BLOCKS CONTAINER -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 top-sections-wrapper min-h-0">
                 <!-- INVITATIONS -->

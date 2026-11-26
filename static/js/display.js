@@ -19,14 +19,17 @@ function displayApp() {
 
         get showCalling() {
             if (this.hideCalling) return false
+            if (this.queueLoadError && this.callingItems.length === 0) return true
             return !(this.autoHideEmpty && this.callingItems.length === 0)
         },
         get showWaiting() {
             if (this.hideWaiting) return false
+            if (this.queueLoadError && this.waitingItems.length === 0) return true
             return !(this.autoHideEmpty && this.waitingItems.length === 0)
         },
         get showOnIce() {
             if (this.hideOnIce) return false
+            if (this.queueLoadError && this.servedItems.length === 0) return true
             return !(this.autoHideEmpty && this.servedItems.length === 0)
         },
 
@@ -39,13 +42,13 @@ function displayApp() {
         getItemPeopleCount(item) {
             if (!item) return 1
             const sizes = item.shoe_sizes
-            if (Array.isArray(sizes)) {return sizes.length > 0 ? sizes.length : 1}
+            if (Array.isArray(sizes) && sizes.length > 0) {return sizes.length}
             if (typeof sizes === "string" && sizes.trim() !== "") {
                 const parts = sizes.split(",").map(s => s.trim()).filter(Boolean)
-                return parts.length > 0 ? parts.length : 1
+                if (parts.length > 0) return parts.length
             }
-            if (typeof item.people_count === "number" && item.people_count > 0) {return item.people_count}
-            if (typeof item.guests_count === "number" && item.guests_count > 0) {return item.guests_count}
+            if (typeof item.people_count === "number" && !Number.isNaN(item.people_count)) {return Math.max(0, item.people_count)}
+            if (typeof item.guests_count === "number" && !Number.isNaN(item.guests_count)) {return Math.max(0, item.guests_count)}
             return 1
         },
         sumPeople(items) {

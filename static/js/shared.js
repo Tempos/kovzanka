@@ -256,11 +256,18 @@ function inventoryMixin() {
 function queueMixin() {
     return {
         queue: [],
+        queueLoadError: false,
         async fetchQueue() {
             try {
                 const res = await fetch("/api/queue")
-                if (res.ok) { this.queue = await res.json() }
-            } catch (e) { console.error("Помилка завантаження черги:", e) }
+                if (res.ok) {
+                    this.queue = await res.json()
+                    this.queueLoadError = false
+                } else {this.queueLoadError = true}
+            } catch (e) {
+                console.error("Помилка завантаження черги:", e)
+                this.queueLoadError = true
+            }
         }
     }
 }
