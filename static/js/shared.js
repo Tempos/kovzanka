@@ -289,3 +289,49 @@ function wsSyncMixin() {
         }
     }
 }
+
+// 5. DEVICE DETECTION
+function detectDeviceType() {
+    const ua = navigator.userAgent || ""
+    const uaDataMobile = navigator.userAgentData && typeof navigator.userAgentData.mobile === "boolean"
+        ? navigator.userAgentData.mobile
+        : null
+
+    const isIPhone = /iPhone|iPod/i.test(ua)
+    const isIPad = /iPad/i.test(ua) || (/Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1)
+    const isAndroid = /Android/i.test(ua)
+    const isAndroidPhone = isAndroid && /Mobile/i.test(ua)
+    const isAndroidTablet = isAndroid && !/Mobile/i.test(ua)
+
+    if (isIPhone || isAndroidPhone || uaDataMobile === true) return "phone"
+    if (isIPad || isAndroidTablet) return "tablet"
+
+    const hasCoarseTouch = typeof window.matchMedia === "function"
+        && window.matchMedia("(hover: none) and (pointer: coarse)").matches
+
+    if (hasCoarseTouch) {
+        const sw = window.screen && window.screen.width ? window.screen.width : window.innerWidth
+        const sh = window.screen && window.screen.height ? window.screen.height : window.innerHeight
+        const minSide = Math.min(sw, sh)
+        return minSide < 600 ? "phone" : "tablet"
+    }
+
+    return "desktop"
+}
+
+function applyDeviceClass() {
+    const device = detectDeviceType()
+    const root = document.documentElement
+    if (!root) return device
+
+    root.classList.remove("ak-device-phone", "ak-device-tablet", "ak-device-desktop")
+    root.classList.add(`ak-device-${device}`)
+    root.dataset.akDevice = device
+    return device
+}
+
+if (typeof window !== "undefined") {
+    applyDeviceClass()
+    window.addEventListener("resize", applyDeviceClass, {passive: true})
+    window.addEventListener("orientationchange", applyDeviceClass, {passive: true})
+}
