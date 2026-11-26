@@ -290,12 +290,23 @@ function wsSyncMixin() {
     }
 }
 
+function scrollTopMixin(threshold = 240) {
+    return {
+        showScrollTop: false,
+        initScrollTop() {
+            const onScroll = () => {this.showScrollTop = window.scrollY > threshold}
+            window.addEventListener("scroll", onScroll, {passive: true})
+            onScroll()
+        },
+        scrollToTop() {window.scrollTo({top: 0, behavior: "smooth"})}
+    }
+}
+
 // 5. DEVICE DETECTION
 function detectDeviceType() {
     const ua = navigator.userAgent || ""
     const uaDataMobile = navigator.userAgentData && typeof navigator.userAgentData.mobile === "boolean"
-        ? navigator.userAgentData.mobile
-        : null
+        ? navigator.userAgentData.mobile : null
 
     const isIPhone = /iPhone|iPod/i.test(ua)
     const isIPad = /iPad/i.test(ua) || (/Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1)

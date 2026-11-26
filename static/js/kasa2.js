@@ -3,6 +3,7 @@ function kasa2App() {
         ...inventoryMixin(),
         ...queueMixin(),
         ...wsSyncMixin(),
+        ...scrollTopMixin(),
 
         // --- STATE AND VARIABLES ---
         searchQuery: "",
@@ -449,6 +450,7 @@ function kasa2App() {
 
         // --- LIFECYCLE ---
         async init() {
+            this.initScrollTop()
             await this.fetchInventory()
             setInterval(() => {this.now = Date.now()}, 1000)
             if (typeof this.fetchQueue === "function") await this.fetchQueue()
