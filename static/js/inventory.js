@@ -2,6 +2,7 @@ function inventory(config = {}) {
     return {
         ...inventoryMixin(),
         ...wsSyncMixin(),
+        ...scrollTopMixin(),
 
         // --- STATE AND VARIABLES ---
         isAdmin: config.isAdmin || false,
@@ -115,6 +116,7 @@ function inventory(config = {}) {
 
         // --- LIFECYCLE ---
         async init() {
+            this.initScrollTop()
             this.initInventory()
             this.initWebSocket()
         }
